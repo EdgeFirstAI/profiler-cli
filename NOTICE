@@ -1,0 +1,23 @@
+EdgeFirst Profiler CLI
+Copyright (c) 2026 Au-Zone Technologies Inc.
+
+Third-Party Components — Repository Content
+===========================================
+
+The installer scripts in this repository (install.sh, install.ps1)
+are original works authored by Au-Zone Technologies Inc. They do not
+incorporate code from third-party projects. Common patterns (POSIX
+sh idioms, PowerShell parameter binding) are not subject to
+attribution.
+
+Third-Party Components — edgefirst-profiler Binary
+===================================================
+
+The edgefirst-profiler binary distributed via this repository's
+GitHub Releases bundles third-party libraries. The complete list of
+those libraries and their licenses is reported by the binary itself:
+
+    edgefirst-profiler --licenses
+
+A machine-readable copy may also be attached to each release as
+NOTICE.binary alongside the platform archives.
