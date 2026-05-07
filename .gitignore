@@ -1,0 +1,18 @@
+# OS detritus
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Build / dependency caches that shouldn't be here but defense-in-depth
+/target/
+/node_modules/
+
+# Local downloads while testing installers
+*.tar.gz
+*.zip
+!assets/*.zip   # (none today, but keeps door open if a packaged asset ships in repo)
+
+# Local agent planning / spec material — never commit
+docs/superpowers/
+.claude/
