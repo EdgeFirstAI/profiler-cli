@@ -1,0 +1,101 @@
+EdgeFirst Profiler CLI — End User License
+
+Copyright (c) 2026 Au-Zone Technologies Inc. All rights reserved.
+
+This license governs the contents of the EdgeFirstAI/profiler-cli
+repository (the "Repository") and the edgefirst-profiler binary and
+its accompanying installer scripts (the "Software"), collectively the
+"Materials".
+
+1. GRANT OF RIGHTS
+
+Subject to the terms below, Au-Zone Technologies Inc. ("Au-Zone")
+grants you a non-exclusive, non-transferable, royalty-free, revocable
+license to:
+
+  (a) download, install, and run the Software on hardware you own or
+      lawfully control, for evaluation, development, and production
+      use, whether offline or in connection with an EdgeFirst Studio
+      account; and
+
+  (b) read, copy, and reference the Repository's documentation,
+      installer scripts, and other textual content for the purpose of
+      installing or evaluating the Software.
+
+2. RESERVED RIGHTS
+
+Except as expressly granted above, all rights are reserved. You may
+not, and may not permit any third party to:
+
+  (a) redistribute, sublicense, sell, rent, lease, or otherwise
+      transfer the Materials or any portion of them;
+
+  (b) modify, adapt, translate, or create derivative works of the
+      Software;
+
+  (c) reverse engineer, decompile, disassemble, or otherwise attempt
+      to derive the source code of the Software, except to the extent
+      such activity is expressly permitted by applicable law
+      notwithstanding this limitation;
+
+  (d) remove or alter any copyright, trademark, or other proprietary
+      notice contained in or on the Materials; or
+
+  (e) use the Au-Zone or EdgeFirst names, logos, or trademarks except
+      as required to identify the Software as the origin of installed
+      output.
+
+3. ONLINE USE AND STUDIO TERMS
+
+When the Software is used in connection with EdgeFirst Studio, your
+use of Studio services is additionally governed by the EdgeFirst
+Studio Terms of Service available at https://edgefirst.studio/terms.
+In the event of conflict between this license and those terms with
+respect to Studio services, the Studio Terms of Service control for
+the affected Studio interaction.
+
+4. THIRD-PARTY COMPONENTS
+
+The Software may incorporate third-party components subject to
+separate license terms identified in the NOTICE file in this
+Repository or in the Software's `--licenses` output. Those terms
+apply to the corresponding components and prevail over this license
+to the extent of any conflict.
+
+5. NO WARRANTY
+
+THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. AU-ZONE DOES NOT WARRANT THAT THE SOFTWARE WILL BE
+ERROR-FREE OR UNINTERRUPTED.
+
+6. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL
+AU-ZONE BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE,
+DATA, OR USE, ARISING OUT OF OR IN CONNECTION WITH THE MATERIALS,
+WHETHER IN CONTRACT, TORT, OR OTHERWISE, EVEN IF AU-ZONE HAS BEEN
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+7. TERMINATION
+
+This license terminates automatically if you breach any of its terms.
+Upon termination you must cease all use of the Materials and delete
+all copies in your possession or control. Sections 2 (Reserved
+Rights), 5 (No Warranty), 6 (Limitation of Liability), and 9
+(Governing Law) survive termination.
+
+8. LICENSING AND COMMERCIAL INQUIRIES
+
+For redistribution rights, OEM bundling, or other licensing
+arrangements outside the scope of this license, contact
+support@au-zone.com.
+
+9. GOVERNING LAW
+
+This license is governed by the laws of the Province of Alberta
+and the federal laws of Canada applicable therein, without regard
+to conflict-of-law principles. The exclusive venue for any dispute
+is the courts of Alberta.
