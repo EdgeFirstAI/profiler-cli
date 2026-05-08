@@ -153,10 +153,17 @@ require_cmd() {
 # Prints the version (with leading 'v' stripped). Exits non-zero on failure.
 resolve_latest_version() {
     local api="https://api.github.com/repos/${REPO}/releases/latest"
-    local tag
-    tag="$(curl -fsSL "$api" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+    local response tag
+    if ! response="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api")"; then
+        err "could not reach $api (network error or GitHub API rate limit)"
+        err "hint: set GITHUB_TOKEN to authenticate, or pass --version X.Y.Z to skip this lookup"
+        return 1
+    fi
+    # The /releases/latest endpoint returns one release object with one tag_name,
+    # but defensively take the first match if anything ever produces more.
+    tag="$(printf '%s' "$response" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | sed -n '1p')"
     if [ -z "$tag" ]; then
-        err "could not resolve latest release tag from $api"
+        err "could not parse latest release tag from $api"
         return 1
     fi
     printf '%s\n' "${tag#v}"
