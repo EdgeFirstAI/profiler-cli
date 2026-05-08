@@ -128,9 +128,142 @@ function Invoke-SelfTest {
 
 # ---------- Entry point -----------------------------------------------------
 
-if ($SelfTest) {
-    exit (Invoke-SelfTest)
+function Resolve-LatestVersion {
+    $api = "https://api.github.com/repos/$Script:Repo/releases/latest"
+    try {
+        $resp = Invoke-RestMethod -Uri $api -Headers @{ 'User-Agent' = 'edgefirst-profiler-cli-install' }
+    } catch {
+        throw "Could not resolve latest release tag from $api : $_"
+    }
+    if (-not $resp.tag_name) { throw "Latest release has no tag_name" }
+    return ($resp.tag_name -replace '^v', '')
 }
 
-Write-Error 'install.ps1: main body not yet implemented (added in Task 8)'
-exit 1
+function Get-ReleaseAssetUrl {
+    param([string]$Version, [string]$Asset)
+    return "https://github.com/$Script:Repo/releases/download/v$Version/$Asset"
+}
+
+function Test-Sha256 {
+    param([string]$Path, [string]$ExpectedHex)
+    $hash = (Get-FileHash -Algorithm SHA256 -Path $Path).Hash.ToLower()
+    return ($hash -eq $ExpectedHex.ToLower())
+}
+
+function Add-ToUserPath {
+    param([string]$Dir)
+    $current = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($current -and ($current.Split(';') -contains $Dir)) { return }
+    $next = if ([string]::IsNullOrEmpty($current)) { $Dir } else { "$current;$Dir" }
+    [Environment]::SetEnvironmentVariable('Path', $next, 'User')
+}
+
+function Add-ToSystemPath {
+    param([string]$Dir)
+    $current = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    if ($current -and ($current.Split(';') -contains $Dir)) { return }
+    $next = if ([string]::IsNullOrEmpty($current)) { $Dir } else { "$current;$Dir" }
+    [Environment]::SetEnvironmentVariable('Path', $next, 'Machine')
+}
+
+function Invoke-Install {
+    if ($SelfTest) { return (Invoke-SelfTest) }
+
+    $os = Get-DetectedOS
+    $arch = Get-DetectedArch
+    if ($os -eq 'unknown' -or $arch -eq 'unknown') {
+        Write-Error "Unsupported platform: os=$os arch=$arch"
+        Write-Error 'Supported: windows-x86_64, windows-aarch64, linux-x86_64, linux-aarch64, macos-x86_64, macos-aarch64'
+        return 1
+    }
+
+    $resolvedVersion = if ([string]::IsNullOrEmpty($Version)) {
+        Write-Host "Resolving latest version from github.com/$Script:Repo..."
+        Resolve-LatestVersion
+    } else { $Version }
+
+    Write-Host "Installing edgefirst-profiler v$resolvedVersion for $os-$arch"
+
+    $resolvedPrefix = if ([string]::IsNullOrEmpty($Prefix)) { Get-DefaultPrefix } else { $Prefix }
+
+    $asset = Get-AssetName -Version $resolvedVersion -OS $os -Arch $arch
+    $url = Get-ReleaseAssetUrl -Version $resolvedVersion -Asset $asset
+    $tmp = New-Item -ItemType Directory -Path (Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())) | Select-Object -ExpandProperty FullName
+    try {
+        $archive = Join-Path $tmp $asset
+        Write-Host "Downloading $asset..."
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing -Headers @{ 'User-Agent' = 'edgefirst-profiler-cli-install' }
+        } catch {
+            Write-Error "Could not download $url"
+            Write-Error "If you pinned -Version, confirm it exists at https://github.com/$Script:Repo/releases"
+            return 1
+        }
+
+        if (-not $NoVerifyChecksum) {
+            Write-Host 'Verifying SHA-256...'
+            $sumsPath = "$archive.sha256"
+            try {
+                Invoke-WebRequest -Uri "$url.sha256" -OutFile $sumsPath -UseBasicParsing -Headers @{ 'User-Agent' = 'edgefirst-profiler-cli-install' }
+            } catch {
+                Write-Error "Could not download checksum file $url.sha256"
+                return 1
+            }
+            $expected = ((Get-Content -Path $sumsPath -TotalCount 1) -split '\s+')[0]
+            if (-not (Test-Sha256 -Path $archive -ExpectedHex $expected)) {
+                Remove-Item -Force $archive
+                Write-Error 'Checksum mismatch'
+                return 1
+            }
+        } else {
+            Write-Warning '-NoVerifyChecksum was specified; skipping integrity check.'
+        }
+
+        Write-Host 'Extracting...'
+        if ($archive.EndsWith('.zip')) {
+            Expand-Archive -Path $archive -DestinationPath $tmp -Force
+        } else {
+            # tar.gz on Windows: tar.exe ships with Windows 10 1803+
+            tar.exe -xzf $archive -C $tmp
+        }
+
+        if (-not (Test-Path $resolvedPrefix)) {
+            New-Item -ItemType Directory -Path $resolvedPrefix -Force | Out-Null
+        }
+
+        $binName = if ($os -eq 'windows') { 'edgefirst-profiler.exe' } else { 'edgefirst-profiler' }
+        $binSrc = Join-Path $tmp $binName
+        if (-not (Test-Path $binSrc)) {
+            $binSrc = (Get-ChildItem -Path $tmp -Recurse -Filter $binName -File | Select-Object -First 1).FullName
+        }
+        if (-not $binSrc -or -not (Test-Path $binSrc)) {
+            Write-Error "$binName not found in archive"
+            return 1
+        }
+
+        $dest = Join-Path $resolvedPrefix $binName
+        Copy-Item -Path $binSrc -Destination $dest -Force
+        Write-Host "Installed to $dest"
+
+        if (Test-IsElevated) { Add-ToSystemPath -Dir $resolvedPrefix } else { Add-ToUserPath -Dir $resolvedPrefix }
+
+        $machinePath = ($env:Path -split ';')
+        if ($machinePath -notcontains $resolvedPrefix) {
+            Write-Host ''
+            Write-Host "Note: $resolvedPrefix was added to your PATH but the current shell will not see it until you open a new terminal."
+        }
+
+        Write-Host ''
+        Write-Host 'Verifying install...'
+        & $dest --version
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error 'Post-install --version check failed'
+            return 1
+        }
+        return 0
+    } finally {
+        Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    }
+}
+
+exit (Invoke-Install)
