@@ -1,12 +1,12 @@
 <p align="center">
+  <img alt="" src="assets/hero.png" srcset="assets/hero.png 1x, assets/hero@2x.png 2x" width="512">
+</p>
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/edgefirst-wordmark-dark.png">
     <img alt="EdgeFirst" src="assets/edgefirst-wordmark-light.png" width="360">
   </picture>
-</p>
-
-<p align="center">
-  <img alt="" src="assets/hero.png" srcset="assets/hero.png 1x, assets/hero@2x.png 2x" width="512">
 </p>
 
 <h1 align="center">EdgeFirst Profiler CLI</h1>
@@ -107,7 +107,7 @@ The CLI works fully offline. There is no telemetry and no license check; an Edge
 
 ## Built on the EdgeFirst Perception Foundation
 
-The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https://github.com/EdgeFirstAI/.github/blob/main/profile/foundation.md) — the same zero-copy, platform-aware infrastructure that runs production EdgeFirst perception pipelines. It uses `edgefirst-hal` for hardware-accelerated decode and pre/post-processing, `edgefirst-tflite` and `edgefirst-ara2` for NPU-aware inference, and `edgefirst-client` for Studio integration.
+The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https://github.com/EdgeFirstAI/.github/blob/main/profile/foundation.md), the same zero-copy, platform-aware infrastructure that runs production EdgeFirst perception pipelines. It uses `edgefirst-hal` for hardware-accelerated decode and pre/post-processing, `edgefirst-tflite` and `edgefirst-ara2` for NPU-aware inference, and `edgefirst-client` for Studio integration.
 
 ## Supported hardware
 
