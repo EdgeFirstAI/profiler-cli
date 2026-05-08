@@ -228,7 +228,13 @@ function Invoke-Install {
         }
 
         if (-not (Test-Path $resolvedPrefix)) {
-            New-Item -ItemType Directory -Path $resolvedPrefix -Force | Out-Null
+            try {
+                New-Item -ItemType Directory -Path $resolvedPrefix -Force | Out-Null
+            } catch {
+                Write-Error "Could not create install directory: $resolvedPrefix"
+                Write-Error 'Try a writable -Prefix DIR, or re-run from an elevated (Administrator) PowerShell.'
+                return 1
+            }
         }
 
         $binName = if ($os -eq 'windows') { 'edgefirst-profiler.exe' } else { 'edgefirst-profiler' }
@@ -242,7 +248,13 @@ function Invoke-Install {
         }
 
         $dest = Join-Path $resolvedPrefix $binName
-        Copy-Item -Path $binSrc -Destination $dest -Force
+        try {
+            Copy-Item -Path $binSrc -Destination $dest -Force
+        } catch {
+            Write-Error "Install directory is not writable: $resolvedPrefix"
+            Write-Error 'Try a writable -Prefix DIR, or re-run from an elevated (Administrator) PowerShell.'
+            return 1
+        }
         Write-Host "Installed to $dest"
 
         if (Test-IsElevated) { Add-ToSystemPath -Dir $resolvedPrefix } else { Add-ToUserPath -Dir $resolvedPrefix }
@@ -255,9 +267,16 @@ function Invoke-Install {
 
         Write-Host ''
         Write-Host 'Verifying install...'
-        & $dest --version
-        if ($LASTEXITCODE -ne 0) {
+        $versionOutput = & $dest --version 2>&1
+        $versionExit = $LASTEXITCODE
+        Write-Host $versionOutput
+        if ($versionExit -ne 0) {
             Write-Error 'Post-install --version check failed'
+            return 1
+        }
+        if ($versionOutput -notmatch [regex]::Escape($resolvedVersion)) {
+            Write-Error "Version mismatch: --version output does not contain '$resolvedVersion'"
+            Write-Error 'This could indicate a corrupt download or a wrong asset.'
             return 1
         }
         return 0

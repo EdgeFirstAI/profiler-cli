@@ -319,8 +319,16 @@ main() {
 
     info ""
     info "Verifying install..."
-    if ! "$prefix/edgefirst-profiler" --version; then
+    local installed_output
+    if ! installed_output="$("$prefix/edgefirst-profiler" --version 2>&1)"; then
         err "post-install --version check failed"
+        printf '%s\n' "$installed_output" >&2
+        return 1
+    fi
+    printf '%s\n' "$installed_output"
+    if ! printf '%s' "$installed_output" | grep -qF "$version"; then
+        err "version mismatch: --version output does not contain '$version'"
+        err "this could indicate a corrupt download or a wrong asset"
         return 1
     fi
 }
