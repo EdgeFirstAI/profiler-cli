@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest an addition or improvement to the EdgeFirst Profiler CLI.
+title: "[feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today, or what's painful about the current behavior?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should the CLI do? Include example commands or output if helpful.
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware context
+      description: Is this specific to a board, SoC, or backend?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: testing
+    attributes:
+      label: Testing
+      options:
+        - label: I'm willing to test a pre-release build of this feature.
+          required: false

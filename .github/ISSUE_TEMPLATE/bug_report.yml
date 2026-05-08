@@ -1,0 +1,79 @@
+name: Bug report
+description: Report a defect in the EdgeFirst Profiler CLI or its installer.
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: edgefirst-profiler version
+      description: Output of `edgefirst-profiler --version`.
+      placeholder: "0.2.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - linux-x86_64
+        - linux-aarch64
+        - macos-x86_64
+        - macos-aarch64
+        - windows-x86_64
+        - other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options:
+        - ONNX Runtime
+        - TensorFlow Lite
+        - NXP Ara-2
+        - other / not applicable
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware
+      description: SoC, board, or device (e.g., "Jetson Orin Nano 8GB", "i.MX 95 EVK").
+    validations:
+      required: false
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command run
+      description: The exact command line that triggered the issue.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output / logs
+      description: Paste relevant output. Redact any tokens, file paths, or data you cannot share.
+      render: shell
+    validations:
+      required: false
