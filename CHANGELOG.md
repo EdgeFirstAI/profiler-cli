@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-05-25
+
+### Added
+
+- Prebuilt `libtrt_shim.so` now ships in linux-aarch64 release archives and wheels. Jetson Orin users on JetPack 6.x can `pip install edgefirst-profiler` or `curl install.sh | bash` and run TensorRT models out of the box — no more "TensorRT shim not found" with a "build it on the Jetson" follow-up. The shim is built in CI from the NVIDIA L4T TensorRT 10.3 container. Users on other JetPack versions can still build from source via `shims/trt-shim/README.md`.
+
+### Changed
+
+- TensorRT shim search path now checks binary-relative locations first: `dirname(profiler_binary)/libtrt_shim.so` for flat archives and manual drop-ins, and `dirname(profiler_binary)/../lib/libtrt_shim.so` for pip-installed wheels. `$TRT_SHIM_PATH`, `LD_LIBRARY_PATH`, and the `/usr/local/lib` / `/usr/lib` fallbacks remain.
+
 ## [1.0.1] - 2026-05-25
 
 ### Fixed
