@@ -249,11 +249,16 @@ main() {
 
     [ -z "$prefix" ] && prefix="$(default_prefix)"
 
-    local asset url tmpdir archive sums
+    local asset url archive sums
     asset="$(build_asset_name "$version" "$os" "$arch")"
     url="$(release_asset_url "$version" "$asset")"
+    # tmpdir is intentionally NOT declared `local` so the EXIT trap can
+    # still see it after the function returns. The previous version
+    # used `local tmpdir` + `trap 'rm -rf "$tmpdir"' EXIT`; that printed
+    # `tmpdir: unbound variable` on every run (and leaked the temp dir)
+    # because the local went out of scope before EXIT fired.
     tmpdir="$(mktemp -d)"
-    trap 'rm -rf "$tmpdir"' EXIT
+    trap 'rm -rf "${tmpdir:-}"' EXIT
     archive="$tmpdir/$asset"
     sums="$tmpdir/${asset}.sha256"
 
