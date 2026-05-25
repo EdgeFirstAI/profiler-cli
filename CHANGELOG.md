@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-05-25
+
+### Fixed
+
+- Validation sessions no longer hang at 100 % inference. The pipeline orchestrator's infer thread held a clone of the buffer-return channel sender for its error path and never dropped it before the post-loop drain — leaving itself as the last live sender so `buffer_rx` could never disconnect. The thread then blocked on `for _buf in buffer_rx {}` forever, which in turn blocked the engine hand-back, the thread joins, and the entire publish flow. Symptom was a progress bar pinned at `5000/5000` with no CPU, no memory growth, and no further output. The clone is now dropped immediately after `drop(tx)` so the drain terminates as soon as the decoder exits.
+- ONNX Runtime per-op profiling no longer spams `Maximum number of events reached, could not record profile event.` partway through long runs. ORT's profiler uses a fixed-capacity 1 M-event ring buffer in upstream `core/common/profiler.cc` and the buffer is not exposed as a session config option in any released ORT version. A YOLO-class graph emits ~240–500 events per `session.run`, so a 5 000-frame run overflows the cap around frame 4 100 and loses every subsequent per-op event. `OrtEngine` now counts invocations and ends profiling early once `ORT_PROFILE_INVOCATION_CAP` (3 000 frames) is reached; the cached profile path is returned later by the trait `end_profiling()` call so the post-loop parser is unchanged. Aggregate stage timing (`tensor_ref`, `session_run`, `output_copy`) keeps running for every subsequent frame through the existing `StagedTimer`.
+
+### Changed
+
+- Post-loop ORT profile emission now streams the JSON file event-by-event instead of `serde_json::from_reader`-ing the whole array into a `Vec<OrtTraceEvent>`. ORT writes one JSON object per line with comma separators (Chrome-tracing convention), so the new `stream_ort_profile` parser walks the file line-by-line, buffers nodes until the per-frame `SequentialExecutor::Execute` envelope event, then yields one `OrtFrameProfile` and frees the buffer. Combined with `stream_emit_ort_trace_events`, this drops peak post-loop memory from roughly 200 MB to ~48 KB for a 3 000-frame capped run and eliminates the multi-second pause that used to happen between the last inference and the start of the publish step.
+- CLI now renders dataset, model, predictions, and trace transfers as indicatif progress bars matching the style used by `edgefirst-cli`. Downloads show decimal bytes (model artifact, trace) or item counts (dataset enumeration); uploads show decimal bytes. The TUI path is unchanged — it continues to consume the structured `PROF:` event stream and reports progress through its dashboard.
+- Inference loop progress is now an indicatif bar instead of a per-100-frame `[N/Total] X.X FPS | elapsed: Ys` `println!`. The bar shows elapsed and ETA, the current/total frame counts with thousands separators, and a custom `{fps}` key formatted to one decimal place (avoids indicatif's default `{per_sec}` which renders the full f64). Skipped under `--emit-prof` (TUI mode) so the parent's PROF: event parser doesn't see ANSI escape sequences.
+- Several "stuck at the end" silences now have status lines so neither the CLI nor the TUI parent process looks frozen: `Inference complete. Finalizing results...` between the last frame and stats computation, `ORT profile: <path>` before the streaming parse begins, `Finalizing trace file...` between the pipeline return and the pftrace `BufWriter` drop, and `Publishing results to Studio...` before the upload. Combined with the streaming ORT parse and the deadlock fix, the gap between "last frame" and "results published" is now visibly attributed instead of being one long silence.
+
 ## [1.0.2] - 2026-05-25
 
 ### Added
