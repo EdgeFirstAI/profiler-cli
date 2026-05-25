@@ -90,21 +90,6 @@ edgefirst-profiler validate --session-id v-abc123 --publish
   <img alt="Profiling complete" src="assets/completion.png" width="380">
 </p>
 
-## Free, with optional Studio account
-
-The EdgeFirst Profiler is free to download and run offline. Sign in with a free [EdgeFirst Studio](https://edgefirst.studio) account to publish results and compare runs across devices. Advanced analysis features are available on paid Studio plans.
-
-| Feature | Offline | Free Studio | Subscription |
-|---|:---:|:---:|:---:|
-| Profile models on-device | ✓ | ✓ | ✓ |
-| Per-operator timing and TUI dashboard | ✓ | ✓ | ✓ |
-| Save runs to your Studio account | | ✓ | ✓ |
-| Compare runs across devices and configurations | | ✓ | ✓ |
-| Validate against Studio datasets (mAP / mIoU) | | ✓ | ✓ |
-| Advanced analysis features | | | TBD |
-
-The CLI works fully offline. There is no telemetry and no license check; an EdgeFirst Studio sign-in is only required when you ask to publish or pull data from Studio.
-
 ## Built on the EdgeFirst Perception Foundation
 
 The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https://github.com/EdgeFirstAI/.github/blob/main/profile/foundation.md), the same zero-copy, platform-aware infrastructure that runs production EdgeFirst perception pipelines. It uses `edgefirst-hal` for hardware-accelerated decode and pre/post-processing, `edgefirst-tflite` and `edgefirst-ara2` for NPU-aware inference, and `edgefirst-client` for Studio integration.
