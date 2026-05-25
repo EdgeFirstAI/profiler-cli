@@ -86,6 +86,16 @@ function Get-DefaultPrefix {
     return Join-Path $env:LOCALAPPDATA 'Programs\edgefirst-profiler'
 }
 
+function Test-PlatformBinariesAvailable {
+    # Returns $true if release archives exist for the given OS today.
+    # Windows builds are not yet shipped by the release pipeline; the
+    # installer should give a friendly error rather than attempt a 404
+    # download. Update this when the release workflow adds windows-x86_64
+    # to its build matrix.
+    param([string]$OS)
+    return ($OS -ne 'windows')
+}
+
 # ---------- Self-test -------------------------------------------------------
 
 function Invoke-SelfTest {
@@ -116,6 +126,10 @@ function Invoke-SelfTest {
     if ($arch -notin @('x86_64', 'aarch64', 'unknown')) {
         $fails += "Get-DetectedArch returned unexpected value: $arch"
     }
+
+    if ((Test-PlatformBinariesAvailable -OS 'windows') -ne $false) { $fails += 'Test-PlatformBinariesAvailable should return $false for windows' }
+    if ((Test-PlatformBinariesAvailable -OS 'linux')   -ne $true)  { $fails += 'Test-PlatformBinariesAvailable should return $true for linux' }
+    if ((Test-PlatformBinariesAvailable -OS 'macos')   -ne $true)  { $fails += 'Test-PlatformBinariesAvailable should return $true for macos' }
 
     if ($fails.Count -eq 0) {
         Write-Host 'install.ps1 self-test: PASS'
@@ -175,6 +189,21 @@ function Invoke-Install {
         Write-Error "Unsupported platform: os=$os arch=$arch"
         Write-Error 'Supported: windows-x86_64, windows-aarch64, linux-x86_64, linux-aarch64, macos-x86_64, macos-aarch64'
         return 1
+    }
+
+    if (-not (Test-PlatformBinariesAvailable -OS $os)) {
+        Write-Host ''
+        Write-Host 'EdgeFirst Profiler CLI does not yet ship Windows binaries.' -ForegroundColor Yellow
+        Write-Host ''
+        Write-Host 'Windows support is planned. Track status at:'
+        Write-Host '  https://github.com/EdgeFirstAI/profiler-cli'
+        Write-Host ''
+        Write-Host 'Supported platforms today:'
+        Write-Host '  - Linux x86_64  (glibc 2.17+ / manylinux2014)'
+        Write-Host '  - Linux aarch64 (glibc 2.17+ / manylinux2014)'
+        Write-Host '  - macOS arm64   (macOS 11+)'
+        Write-Host ''
+        return 2
     }
 
     $resolvedVersion = if ([string]::IsNullOrEmpty($Version)) {
