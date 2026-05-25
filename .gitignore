@@ -16,3 +16,5 @@ Thumbs.db
 # Local agent planning / spec material — never commit
 docs/superpowers/
 .claude/
+.art-tmp/
+.venv-art/
