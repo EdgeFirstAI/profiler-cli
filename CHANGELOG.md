@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-05-29
+
+### Fixed
+
+- Models with float16 (fp16) inputs and outputs now produce detections. Previously these models — including every TensorRT engine produced by EdgeFirst Studio with `fp16` precision — completed without errors but returned no predictions, leaving `predictions.parquet` empty. Validated on Jetson platforms running TensorRT; other platforms and runtimes have not been verified yet.
+
 ## [1.2.0] - 2026-05-27
 
 ### Added
