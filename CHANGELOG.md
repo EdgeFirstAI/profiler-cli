@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-06-09
+
+### Changed
+
+- Internal: updated to the latest EdgeFirst HAL library. The update brings fixes and improvements to tensor view handling and the batch-tiling code path — the foundations that multi-frame decode and future batched-inference features build on. No change to measurements, predictions, or pipeline behaviour on any platform.
+
 ## [1.3.1] - 2026-06-08
 
 ### Added
