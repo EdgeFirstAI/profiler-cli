@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-06-08
+
+### Added
+
+- TensorRT validation now keeps two frames in flight by default — the GPU works on frame N while frame N+1 is being decoded and preprocessed on the CPU, matching the pipelined behaviour already available for ONNX Runtime and Ara-2. The Perfetto trace gains `trt.h2d`, `trt.infer`, and `trt.d2h` per-frame timing tracks showing accurate GPU-side durations (measured with CUDA events rather than host-side wall clock, so pipeline overlap no longer inflates the inference figure). **Note:** this release requires rebuilding `libtrt_shim.so` on Jetson before deploying; see `shims/trt-shim/README.md`.
+
+### Fixed
+
+- Validation sessions on all platforms no longer silently produce zero detections when the runtime selects GPU-backed output buffers. Output buffers are now always allocated as host memory until a fix is available in the underlying HAL; inference and preprocessing paths are unaffected.
+- Decoder failures are now reported as a warning at the end of every run. When any frame fails to produce detections due to a decoder error the run reports a count (e.g. "42 of 5000 frames had decoder errors") so unexpectedly low detection counts are visible rather than silently absorbed.
+
 ## [1.3.0] - 2026-06-08
 
 ### Added
