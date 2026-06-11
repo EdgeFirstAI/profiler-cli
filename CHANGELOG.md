@@ -6,11 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-11
+
+### Added
+
+- F4 Profiler dashboard now shows a `Setup:` timer next to the elapsed clock, covering model load and warmup. The timer ticks while the engine loads and warms up, then freezes when the first measured frame completes — the same instant the main `Elapsed:` clock starts. The two readouts make it obvious how much of a session was spent preparing versus measuring, and the final on-screen elapsed time now matches the reported total instead of appearing to "rewind" when load/warmup time was subtracted at completion.
+- Perfetto traces from multi-slot ONNX runs now place the `ort.bind` / `ort.run` / `ort.extract` device slices at their true wall-clock positions, on one track per inference slot (`ort.run.slot0`, `ort.run.slot1`, …). Overlapping inferences render as real cross-track overlap, and the device timeline ends when the run actually ended. Previously the three durations were packed back-to-back on a single shared track, which with overlapping slots extended the device timeline well past the end of the run (e.g. ~77 s of device slices for a 42 s CPU run). Backends that only report device-side durations without host start times (Ara-2, Hailo, TFLite) keep the packed layout but per slot and anchored at each frame's inference start, so their tracks also stay within the real run span.
+- V4L2 hardware JPEG decode is now supported on i.MX platforms. The hardware codec path is selected automatically when available, reducing decode latency and CPU load compared to the software decoder.
+
+### Fixed
+
+- The TUI no longer falls behind ultra-fast models. With execution providers sustaining several hundred FPS (e.g. CoreML ANE at ~730 FPS), the dashboard previously processed one progress event per ~100 ms redraw, so the progress bar and frame counter kept animating for several seconds after the run had actually finished. Terminal rendering is now capped at ~30 FPS independent of event arrival, progress events are drained in batches as they arrive, and per-frame statistics are recomputed once per redraw instead of once per frame — the display now tracks the backend in real time at any model speed (and key input latency improves from ~100 ms to ~33 ms).
+- Validation runs now report the same `total_time_ms` semantics as inference-only runs: the span from first to last measured frame completion. Previously the validation path reported elapsed time including warmup, dataset prescan, and trace finalization, which inflated the figure relative to the FPS statistics computed over measured frames only.
+
 ## [1.3.2] - 2026-06-09
 
 ### Changed
 
-- Internal: updated to the latest EdgeFirst HAL library. The update brings fixes and improvements to tensor view handling and the batch-tiling code path — the foundations that multi-frame decode and future batched-inference features build on. No change to measurements, predictions, or pipeline behaviour on any platform.
+- Updated to the latest EdgeFirst HAL library, bringing fixes and improvements to tensor view handling and the batch-tiling code path — the foundations that multi-frame decode and future batched-inference features build on. No change to measurements, predictions, or pipeline behaviour on any platform.
 
 ## [1.3.1] - 2026-06-08
 
