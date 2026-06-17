@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-06-16
+
+### Added
+
+- **`--list-models` flag for `validate`.** When `--training-session` is given without `--model`, the CLI now prints every available artifact for that training session and exits instead of silently auto-selecting the first `.onnx` file. The same listing can be requested explicitly at any time with `--list-models`. Re-run with `--model <artifact-name>` to proceed.
+- **Custom images with `--session-id` now work.** Passing `--images <dir>` alongside `--session-id` overrides the session dataset for profiling. Validation is disabled automatically in this case (equivalent to `--no-validate`) because the custom images have no ground-truth annotations tied to the session; a warning is printed explaining the forced flag.
+
+### Changed
+
+- **Validator launch failures are now surfaced.** When the EdgeFirst Validator cannot be launched after a profiling run (for example, due to a permission error on the session), the CLI prints an actionable warning and suggests re-running with `--no-validate` to upload results without triggering analysis. Previously the failure was silent.
+
 ## [1.5.0] - 2026-06-16
 
 ### Added
