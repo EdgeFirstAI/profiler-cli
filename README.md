@@ -64,6 +64,57 @@ The installer detects your OS and architecture, fetches the matching release art
 edgefirst-profiler --version
 ```
 
+## Run with Docker
+
+Pre-built multi-arch images (linux/amd64 + linux/arm64) are published to
+`ghcr.io/edgefirstai/profiler-cli` — no Rust toolchain or local install required.
+
+```sh
+docker pull ghcr.io/edgefirstai/profiler-cli:onnx
+```
+
+> **`onnx` / `latest` is CPU-only.** Throughput measured on these tags runs on the
+> CPU ONNX Runtime regardless of any GPU in the host — GPU measurement requires the
+> **`cuda`** tag.
+
+| Tag | Contents |
+|---|---|
+| `onnx`, `latest` | CPU ONNX Runtime (default) |
+| `cuda` | NVIDIA GPU — CUDA 12.6 / cuDNN 9 (amd64) |
+| `core` | Profiler binary only — bring your own runtime (`FROM` base) |
+
+Immutable per-release tags follow `VERSION-VARIANT` (e.g. `1.6.0-onnx`); see the
+[CHANGELOG](CHANGELOG.md) for released versions.
+
+**CLI** — mount your models/images under `/workdir`:
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v edgefirst-profiler:/home/edgefirst -v "$PWD":/workdir \
+  ghcr.io/edgefirstai/profiler-cli:onnx \
+  validate --model /workdir/model.onnx --images /workdir/val
+```
+
+**TUI** — add `-it` and a terminal type:
+
+```sh
+docker run -it --rm -e TERM=xterm-256color \
+  -v edgefirst-profiler:/home/edgefirst -v "$PWD":/workdir \
+  ghcr.io/edgefirstai/profiler-cli:onnx
+```
+
+**NVIDIA GPU (amd64)** — requires `nvidia-container-toolkit` on the host:
+
+```sh
+docker run --rm --gpus all --user "$(id -u):$(id -g)" \
+  -v edgefirst-profiler:/home/edgefirst -v "$PWD":/workdir \
+  ghcr.io/edgefirstai/profiler-cli:cuda \
+  validate --model /workdir/model.onnx --provider cuda --images /workdir/val
+```
+
+The named volume `edgefirst-profiler` persists the decode cache and your EdgeFirst
+Studio auth token across runs.
+
 ## Examples
 
 **Profile a YOLOv8 model offline (ONNX)**
