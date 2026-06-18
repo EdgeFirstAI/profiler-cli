@@ -76,17 +76,22 @@ docker pull ghcr.io/edgefirstai/profiler-cli:onnx
 
 ### Tags and architectures
 
-| Tag | Runtime | x86_64 | aarch64 | Status |
-|-----|---------|:------:|:-------:|--------|
-| `onnx`, `latest` | CPU ONNX Runtime | ✅ | ✅ | available |
-| `core` | Binary only — bring your own runtime (`FROM` base) | ✅ | ✅ | available |
-| `cuda` | NVIDIA GPU (CUDA 12.6 / cuDNN 9) | ✅ | — | available (Jetson/Orin aarch64 in progress) |
-| `tflite` | TFLite + NXP Neutron NPU (i.MX 95) | — | ✅ | planned |
-| `ara240` | Kinara Ara-2 DVM | ✅ | ✅ | planned |
-| `hailo` | Hailo-8 / Hailo-8L (HailoRT) | ✅ | ✅ | planned |
+| Tag | Runtime | x86_64 | aarch64 |
+|-----|---------|:------:|:-------:|
+| `onnx`, `latest` | CPU ONNX Runtime (default) | ✅ | ✅ |
+| `core` | Binary only — bring your own runtime (`FROM` base) | ✅ | ✅ |
+| `cuda` | NVIDIA GPU — CUDA 12.6 / cuDNN 9 | ✅ | 🚧 |
+| `tflite` | CPU TFLite (XNNPACK) | 🚧 | 🚧 |
+| `imx95` | NXP i.MX 95 — Neutron NPU | — | 🚧 |
+| `imx8mp` | NXP i.MX 8M Plus — Verisilicon NPU (VX) | — | 🚧 |
+| `ara240` | Kinara Ara-2 DVM | 🚧 | 🚧 |
+| `hailo` | Hailo-8 / Hailo-8L (HailoRT) | 🚧 | 🚧 |
 
-`onnx`/`latest` and `core` are multi-arch (x86_64 + aarch64). `cuda` is currently
-**amd64-only** (Jetson/Orin aarch64 support is in progress). Immutable per-release
+✅ available · 🚧 on the roadmap · — not applicable
+
+`onnx`/`latest` and `core` are multi-arch (x86_64 + aarch64). `cuda` ships x86_64 today,
+with Jetson/Orin aarch64 on the roadmap. The NPU tags `imx95` and `imx8mp` are
+aarch64-only — they bundle their device's userspace NPU drivers. Immutable per-release
 tags follow `VERSION-VARIANT` (e.g. `1.6.0-onnx`); see the [CHANGELOG](CHANGELOG.md).
 
 > **`onnx` / `latest` is CPU-only.** Throughput measured on these tags runs on the
