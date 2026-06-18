@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="" src="assets/hero.png" srcset="assets/hero.png 1x, assets/hero@2x.png 2x" width="512">
+  <img alt="" src="assets/hero@2x.png" width="512">
 </p>
 
 <p align="center">
@@ -93,10 +93,8 @@ edgefirst-profiler login
 edgefirst-profiler validate --session-id v-abc123 --publish
 ```
 
-<p align="center">
-  <img alt="File browser" src="assets/tui-files.png" width="380">
-  <img alt="Profiling complete" src="assets/completion.png" width="380">
-</p>
+<p align="center"><img alt="File Browser" src="assets/tui-files.png" width="780"></p>
+
 
 ## Built on the EdgeFirst Perception Foundation
 
@@ -108,7 +106,7 @@ The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https:/
 |---|---|
 | NVIDIA Jetson Orin / Orin Nano | aarch64; CUDA execution provider via ONNX Runtime |
 | NXP i.MX 95 | aarch64; Neutron NPU via the TFLite delegate |
-| Raspberry Pi 5 | aarch64; CPU and optional accelerators |
+| Hailo-8 / Hailo-8L | HailoRT runtime via HEF models; host-agnostic (Raspberry Pi, x86_64, or any Linux machine) |
 | Kinara Ara-2 | DVM models via the `ara2-proxy` daemon |
 | Generic Linux x86_64 / macOS / Windows | CPU profiling and Studio workflow |
 
