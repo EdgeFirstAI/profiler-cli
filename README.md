@@ -133,18 +133,18 @@ tags follow `VERSION-VARIANT` (e.g. `1.6.0-onnx`); see the [CHANGELOG](CHANGELOG
 ### EdgeFirst Studio workflow
 
 The common case pulls the model and validation session from Studio, so **nothing from
-the host needs to be mounted**. A named volume persists your auth token and the decode
-cache across runs:
+the host needs to be mounted**. A volume mounted at `/config` persists your auth token
+and the decode cache across runs (the volume name is yours to choose):
 
 ```sh
 # log in once (interactive); the token is saved in the named volume
 docker run -it --rm -e TERM=xterm-256color \
-  -v edgefirst-profiler:/home/edgefirst \
+  -v edgefirst:/config \
   ghcr.io/edgefirstai/profiler-cli:onnx login
 
 # profile a Studio session and publish results
 docker run --rm \
-  -v edgefirst-profiler:/home/edgefirst \
+  -v edgefirst:/config \
   ghcr.io/edgefirstai/profiler-cli:onnx \
   validate --session-id v-abc123 --publish
 ```
@@ -157,7 +157,7 @@ To profile a model from disk, bind-mount a working directory as `/workdir`:
 
 ```sh
 docker run --rm \
-  -v edgefirst-profiler:/home/edgefirst -v "$PWD":/workdir \
+  -v edgefirst:/config -v "$PWD":/workdir \
   ghcr.io/edgefirstai/profiler-cli:onnx \
   validate --model /workdir/model.onnx --images /workdir/val
 ```
@@ -174,7 +174,7 @@ Requires `nvidia-container-toolkit` on the host:
 
 ```sh
 docker run --rm --gpus all \
-  -v edgefirst-profiler:/home/edgefirst -v "$PWD":/workdir \
+  -v edgefirst:/config -v "$PWD":/workdir \
   ghcr.io/edgefirstai/profiler-cli:cuda \
   validate --model /workdir/model.onnx --provider cuda --images /workdir/val
 ```
