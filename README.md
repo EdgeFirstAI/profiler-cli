@@ -32,6 +32,16 @@ The EdgeFirst Profiler is a feature of [EdgeFirst Studio](https://edgefirst.stud
 
 <p align="center"><img alt="EdgeFirst Profiler TUI" src="assets/tui-profiler.png" width="780"></p>
 
+## Supported hardware
+
+| Vendor / family | Notes |
+|---|---|
+| NVIDIA Jetson Orin / Orin Nano | aarch64; CUDA execution provider via ONNX Runtime |
+| NXP i.MX 95 | aarch64; Neutron NPU via the TFLite delegate |
+| Hailo-8 / Hailo-8L | HailoRT runtime via HEF models; host-agnostic (Raspberry Pi, x86_64, or any Linux machine) |
+| Kinara Ara-2 | DVM models via the `ara2-proxy` daemon |
+| Generic Linux x86_64 / macOS / Windows | CPU profiling and Studio workflow |
+
 ## Install
 
 **Linux and macOS**
@@ -63,6 +73,29 @@ The installer detects your OS and architecture, fetches the matching release art
 ```sh
 edgefirst-profiler --version
 ```
+
+## Examples
+
+**Profile a YOLOv8 model offline (ONNX)**
+
+```sh
+edgefirst-profiler validate --model yolov8n.onnx --images ./val
+```
+
+**Profile a TFLite model with the NPU on i.MX 95**
+
+```sh
+edgefirst-profiler validate --model yolov8n.tflite --delegate libneutron_delegate.so
+```
+
+**Validate against an EdgeFirst Studio session and publish results**
+
+```sh
+edgefirst-profiler login
+edgefirst-profiler validate --session-id v-abc123 --publish
+```
+
+<p align="center"><img alt="File Browser" src="assets/tui-files.png" width="780"></p>
 
 ## Run with Docker
 
@@ -146,49 +179,18 @@ docker run --rm --gpus all \
   validate --model /workdir/model.onnx --provider cuda --images /workdir/val
 ```
 
-## Examples
-
-**Profile a YOLOv8 model offline (ONNX)**
-
-```sh
-edgefirst-profiler validate --model yolov8n.onnx --images ./val
-```
-
-**Profile a TFLite model with the NPU on i.MX 95**
-
-```sh
-edgefirst-profiler validate --model yolov8n.tflite --delegate libneutron_delegate.so
-```
-
-**Validate against an EdgeFirst Studio session and publish results**
-
-```sh
-edgefirst-profiler login
-edgefirst-profiler validate --session-id v-abc123 --publish
-```
-
-<p align="center"><img alt="File Browser" src="assets/tui-files.png" width="780"></p>
-
-
 ## Built on the EdgeFirst Perception Foundation
 
 The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https://github.com/EdgeFirstAI/.github/blob/main/profile/foundation.md), the same zero-copy, platform-aware infrastructure that runs production EdgeFirst perception pipelines. It uses `edgefirst-hal` for hardware-accelerated decode and pre/post-processing, `edgefirst-tflite` and `edgefirst-ara2` for NPU-aware inference, and `edgefirst-client` for Studio integration.
 
-## Supported hardware
+## Documentation, support, community
 
-| Vendor / family | Notes |
-|---|---|
-| NVIDIA Jetson Orin / Orin Nano | aarch64; CUDA execution provider via ONNX Runtime |
-| NXP i.MX 95 | aarch64; Neutron NPU via the TFLite delegate |
-| Hailo-8 / Hailo-8L | HailoRT runtime via HEF models; host-agnostic (Raspberry Pi, x86_64, or any Linux machine) |
-| Kinara Ara-2 | DVM models via the `ara2-proxy` daemon |
-| Generic Linux x86_64 / macOS / Windows | CPU profiling and Studio workflow |
-
-## Documentation, support, status
-
-- **Reference documentation:** [edgefirst.studio](https://edgefirst.studio) (the EdgeFirst Profiler section, when published).
-- **Issues:** use the [GitHub issue tracker](https://github.com/EdgeFirstAI/profiler-cli/issues) — bug-report and feature-request templates are provided.
-- **Support, sales, anything else:** `support@au-zone.com`.
+- **Documentation:** [doc.edgefirst.ai/latest/profiler](https://doc.edgefirst.ai/latest/profiler/)
+- **EdgeFirst Studio:** [edgefirst.studio](https://edgefirst.studio)
+- **Au-Zone Technologies:** [au-zone.com](https://www.au-zone.com)
+- **Community:** join the [EdgeFirst Discord](https://discord.gg/M5SgDvNCb2)
+- **Bug reports & feature requests:** open an issue in [this repository](https://github.com/EdgeFirstAI/profiler-cli/issues).
+- **Support, sales, anything else:** `support@au-zone.com`
 
 ---
 
