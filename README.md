@@ -89,7 +89,7 @@ docker pull ghcr.io/edgefirstai/profiler-cli:onnx
 
 ✅ available · 🚧 on the roadmap · — not applicable
 
-`onnx`/`latest` and `core` are multi-arch (x86_64 + aarch64). `cuda` ships amd64 today,
+`onnx`/`latest` and `core` are multi-arch (x86_64 + aarch64). `cuda` ships x86_64 today,
 with Jetson/Orin aarch64 on the roadmap. The NPU tags `imx95` and `imx8mp` are
 aarch64-only — they bundle their device's userspace NPU drivers. Immutable per-release
 tags follow `VERSION-VARIANT` (e.g. `1.6.0-onnx`); see the [CHANGELOG](CHANGELOG.md).
