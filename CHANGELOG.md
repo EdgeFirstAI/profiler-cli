@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-19
+
+### Added
+
+- **Docker images.** `edgefirst-profiler` now **also** ships as pre-built container images on the GitHub Container Registry, alongside the existing install script and release binaries — `docker pull ghcr.io/edgefirstai/profiler-cli:onnx` and run, with no Rust toolchain or local install required. Three runtimes publish as separate tags: **`onnx`** (CPU ONNX Runtime — also the default `latest`), **`cuda`** (NVIDIA GPU via the CUDA execution provider), and **`core`** (the bare binary, as a base image for bringing your own runtime). The `onnx` and `core` tags are multi-architecture (x86_64 + aarch64); `cuda` ships for x86_64. Mount a volume at `/config` to persist the decode cache and your EdgeFirst Studio login across runs.
+- **`--mask-depth N` — parallelize segmentation mask materialization.** The Materialize Masks stage (build each detection's mask from the prototype tensor, then PNG-encode it) previously ran single-threaded and is the throughput gate for segmentation models — frames materialize one at a time even when the accelerator already has the next result ready. It now fans out across `N` parallel CPU workers, each materializing a different frame concurrently. The default (`0`) auto-selects 2 workers (capped from the host core count); detection-only models ignore the flag and keep a single pass-through worker (no masks to build). The launch-time **Customize pipeline depths** dialog gains a matching **Mask** slider, and the live dashboard and Perfetto trace now report the Materialize Masks stage's effective worker count so its per-stage utilization is shown correctly.
+
+### Changed
+
+- **ONNX CPU profiling is dramatically faster on multi-core machines.** The profiler now automatically balances inference and image-decoding work across the available CPU cores instead of letting every inference session contend for all of them. On a 48-core AWS Graviton4 instance, `yolov8n-seg` validation rose from 17.5 to 94 FPS (and `yolov5n` to 132 FPS) with no configuration changes. The per-session thread split can be overridden with the `EDGEFIRST_ORT_INTRA_THREADS` / `EDGEFIRST_ORT_INTER_THREADS` environment variables, and Arm BF16 fast-math can be turned off with `EDGEFIRST_ORT_BF16_FASTMATH=0`.
+- **Faster image pre-processing via the updated EdgeFirst HAL.** This release moves to EdgeFirst HAL 0.25, which speeds up CPU-side image conversion on the file-load → model-input path and tightens its worst-case latency. On macOS the pre-processing stage now runs its GPU work across multiple threads in parallel — a multi-thread `--preprocess-depth` run on Apple Silicon previously serialized every thread on a single shared graphics context, so raising the depth now actually improves pre-processing throughput. Measurements, predictions, and pipeline behaviour are otherwise unchanged on every platform.
+
 ## [1.5.1] - 2026-06-16
 
 ### Added
