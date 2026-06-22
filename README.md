@@ -52,7 +52,7 @@ irm https://raw.githubusercontent.com/EdgeFirstAI/profiler-cli/main/install.ps1 
 pip install --user edgefirst-profiler
 ```
 
-The wheel ships the same precompiled native binary as the curl / PowerShell installers — `pip install` simply drops it into the Python environment of your choice. Use `--user` for a per-user install (binary lands in `~/.local/bin/`), inside a `venv` for project-local, or with `sudo` for a system-wide install. Wheels are published for Linux x86_64 / aarch64 (manylinux2014) and macOS arm64; Windows wheels are planned. See the [PyPI project page](https://pypi.org/project/edgefirst-profiler/) for the version index.
+The wheel ships the same precompiled native binary as the curl / PowerShell installers — `pip install` simply drops it into the Python environment of your choice. Use `--user` for a per-user install (the binary lands on your Python user-scripts path — `~/.local/bin/` on Linux, `~/Library/Python/<ver>/bin/` on macOS), inside a `venv` for project-local, or with `sudo` for a system-wide install. Wheels are published for Linux x86_64 / aarch64 (manylinux2014) and macOS arm64; Windows wheels are planned. See the [PyPI project page](https://pypi.org/project/edgefirst-profiler/) for the version index.
 
 **Pin a specific version**
 
@@ -140,7 +140,7 @@ Jetson / Orin uses `--runtime nvidia` in place of `--gpus all`.
 docker run --rm \
   --device /dev/neutron0 \
   --device /dev/dma_heap/linux,cma \
-  -v "$PWD":/workdir \
+  -v edgefirst:/config -v "$PWD":/workdir \
   ghcr.io/edgefirstai/profiler-cli:imx95 \
   validate --model /workdir/model_neutron.tflite
 ```
