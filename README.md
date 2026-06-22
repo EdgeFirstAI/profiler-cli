@@ -72,88 +72,6 @@ The installer detects your OS and architecture, fetches the matching release art
 edgefirst-profiler --version
 ```
 
-## Run with Docker
-
-Pre-built images are published to `ghcr.io/edgefirstai/profiler-cli` — no Rust
-toolchain or local install required. Each runtime is built for the architectures it
-supports; the set spans both x86_64 and aarch64, but not every tag is multi-arch.
-
-```sh
-docker pull ghcr.io/edgefirstai/profiler-cli:onnx
-```
-
-### Tags and architectures
-
-| Tag | Runtime | x86_64 | aarch64 |
-|-----|---------|:------:|:-------:|
-| `onnx`, `latest` | CPU ONNX Runtime (default) | ✅ | ✅ |
-| `core` | Binary only — bring your own runtime (`FROM` base) | ✅ | ✅ |
-| `cuda` | NVIDIA GPU — CUDA 12.6 / cuDNN 9 | ✅ | 🚧 |
-| `tflite` | CPU TFLite (XNNPACK) | 🚧 | 🚧 |
-| `imx95` | NXP i.MX 95 — Neutron NPU | — | 🚧 |
-| `imx8mp` | NXP i.MX 8M Plus — Verisilicon NPU (VX) | — | 🚧 |
-| `ara240` | Kinara Ara-2 DVM | 🚧 | 🚧 |
-| `hailo` | Hailo-8 / Hailo-8L (HailoRT) | 🚧 | 🚧 |
-
-✅ available · 🚧 on the roadmap · — not applicable
-
-`onnx`/`latest` and `core` are multi-arch (x86_64 + aarch64). `cuda` ships x86_64 today,
-with Jetson/Orin aarch64 on the roadmap. The NPU tags `imx95` and `imx8mp` are
-aarch64-only — they bundle their device's userspace NPU drivers. Immutable per-release
-tags follow `VERSION-VARIANT` (e.g. `1.6.0-onnx`); see the [CHANGELOG](CHANGELOG.md).
-
-> **`onnx` / `latest` is CPU-only.** Throughput measured on these tags runs on the
-> CPU ONNX Runtime regardless of any GPU in the host — GPU measurement requires `cuda`.
-
-### EdgeFirst Studio workflow
-
-The common case pulls the model and validation session from Studio, so **nothing from
-the host needs to be mounted**. A named volume persists your auth token and the decode
-cache across runs:
-
-```sh
-# log in once (interactive); the token is saved in the named volume
-docker run -it --rm -e TERM=xterm-256color \
-  -v edgefirst-profiler:/home/edgefirst \
-  ghcr.io/edgefirstai/profiler-cli:onnx login
-
-# profile a Studio session and publish results
-docker run --rm \
-  -v edgefirst-profiler:/home/edgefirst \
-  ghcr.io/edgefirstai/profiler-cli:onnx \
-  validate --session-id v-abc123 --publish
-```
-
-(Omit the `-v` volume entirely to run fully stateless — the cache is just discarded.)
-
-### Profiling local model files (Linux / macOS)
-
-To profile a model from disk, bind-mount a working directory as `/workdir`:
-
-```sh
-docker run --rm \
-  -v edgefirst-profiler:/home/edgefirst -v "$PWD":/workdir \
-  ghcr.io/edgefirstai/profiler-cli:onnx \
-  validate --model /workdir/model.onnx --images /workdir/val
-```
-
-Files the profiler writes back into a bind-mounted `/workdir` are owned by root by
-default. **Optional:** to have them owned by your host user on Linux/macOS, add
-`--user "$(id -u):$(id -g)"`. This only matters when you bind-mount a host directory —
-the Studio workflow above doesn't need it. (On Windows, omit `--user`; `$(id -u)` and
-`$PWD` are POSIX-shell syntax — use the PowerShell equivalents, e.g. `${PWD}`.)
-
-### NVIDIA GPU — amd64 (Linux)
-
-Requires `nvidia-container-toolkit` on the host:
-
-```sh
-docker run --rm --gpus all \
-  -v edgefirst-profiler:/home/edgefirst -v "$PWD":/workdir \
-  ghcr.io/edgefirstai/profiler-cli:cuda \
-  validate --model /workdir/model.onnx --provider cuda --images /workdir/val
-```
-
 ## Examples
 
 **Profile a YOLOv8 model offline (ONNX)**
@@ -192,9 +110,22 @@ Pre-built images publish to `ghcr.io/edgefirstai/profiler-cli` on every release 
 | `imx8mp` | arm64 only | NXP i.MX 8M Plus VSI NPU |
 | `core` | amd64 + arm64 | Binary only — base image for custom runtime mounts |
 
-Immutable per-release tags follow `VERSION-VARIANT` (e.g. `1.6.1-onnx`); the `imx95` and `imx8mp` tags are arm64-only.
+Immutable per-release tags follow `VERSION-VARIANT` (e.g. `1.6.1-onnx`); the `imx95` and `imx8mp` tags are arm64-only. The `ara240` (Kinara Ara-2) and `hailo` (Hailo-8 / Hailo-8L) images are on the roadmap.
 
 Mount a named volume at `/config` for the cache and EdgeFirst Studio auth token (it persists across runs), and bind-mount your working directory at `/workdir`. `--user "$(id -u):$(id -g)"` keeps output files owned by your local user.
+
+**EdgeFirst Studio session** — pulls the model and validation session from Studio, so nothing from the host needs mounting (omit `-v "$PWD":/workdir`):
+
+```sh
+# log in once (interactive); the token is saved in the named volume
+docker run -it --rm -v edgefirst:/config \
+  ghcr.io/edgefirstai/profiler-cli:onnx login
+
+# profile a Studio session and publish results
+docker run --rm -v edgefirst:/config \
+  ghcr.io/edgefirstai/profiler-cli:onnx \
+  validate --session-id v-abc123 --publish
+```
 
 **CPU ONNX (CLI)**
 
