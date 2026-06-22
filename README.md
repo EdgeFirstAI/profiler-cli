@@ -112,7 +112,7 @@ Pre-built images publish to `ghcr.io/edgefirstai/profiler-cli` on every release 
 
 Immutable per-release tags follow `VERSION-VARIANT` (e.g. `1.6.1-onnx`); the `imx95` and `imx8mp` tags are arm64-only. The `ara240` (Kinara Ara-2) and `hailo` (Hailo-8 / Hailo-8L) images are on the roadmap.
 
-Mount a named volume at `/config` for the cache and EdgeFirst Studio auth token — it persists across runs. The common Studio workflow needs nothing else mounted; bind-mounting a working directory at `/workdir` is only for the advanced CLI form below.
+The container runs as **root by default**, so device/accelerator access works without `--user` (pass `--user "$(id -u):$(id -g)"` to run unprivileged). Mount a named volume at `/config` for the cache and EdgeFirst Studio auth token — it persists across runs. The common Studio workflow needs nothing else mounted; bind-mounting a working directory at `/workdir` is only for the advanced CLI form below.
 
 **Launch the TUI** — the default invocation opens the interactive dashboard. Press `F2` to connect to EdgeFirst Studio (log in once; the token persists in the volume) and pull models + validation sessions, or `F3` to browse for local models:
 
@@ -128,23 +128,40 @@ The same launch works for every variant — add only that variant's GPU or devic
 docker run -it --rm --gpus all -v edgefirst:/config \
   ghcr.io/edgefirstai/profiler-cli:cuda
 
-# NXP i.MX 95 Neutron NPU — i.MX 8M Plus uses --device /dev/galcore in place of /dev/neutron0
-docker run -it --rm \
-  --device /dev/neutron0 --device /dev/dma_heap/linux,cma \
-  -v edgefirst:/config \
+# NXP i.MX 95 / i.MX 8M Plus NPU — use --privileged (recommended for now)
+docker run -it --rm --privileged -v edgefirst:/config \
   ghcr.io/edgefirstai/profiler-cli:imx95
 ```
 
-**Advanced — CLI with local files.** To profile a model from the host non-interactively, bind-mount a working directory at `/workdir`, drop `-it`, and pass a `validate` command. `--user "$(id -u):$(id -g)"` keeps output files owned by your local user:
+For the NXP NPU images, `--privileged` grants the NPU device, the DMA heaps, the GPU the HAL uses for decode/preprocess, and real-time scheduling in one flag — the recommended approach today (a minimal per-accelerator `--device` set will be documented as it is finalized). `--privileged` already includes `CAP_SYS_NICE`, so SCHED_FIFO works without a separate `--cap-add SYS_NICE`.
+
+**Advanced — CLI with local files.** To profile a model from the host non-interactively, bind-mount a working directory at `/workdir`, drop `-it`, and pass a `validate` command. Results written under `/workdir` are reassigned to that directory's owner automatically — the root container detects the owner — so they come out owned by your user with no extra flag (override with `--output-owner <uid:gid|username>` or `EDGEFIRST_OUTPUT_OWNER`):
 
 ```sh
-docker run --rm --user "$(id -u):$(id -g)" \
+docker run --rm \
   -v edgefirst:/config -v "$PWD":/workdir \
   ghcr.io/edgefirstai/profiler-cli:onnx \
   validate --model /workdir/model.onnx --images /workdir/val --count 100
 ```
 
 The same `-v "$PWD":/workdir` mapping combines with any variant's GPU/device flags — e.g. add `--gpus all --provider cuda` for discrete-GPU CUDA, or the `--device` flags for an NPU image.
+
+### i.MX 95 Neutron firmware (one-time host setup)
+
+The `imx95` image bundles the Neutron delegate and driver, but the matching `NeutronFirmware.elf` must live on the **host** — the kernel loads it from the host filesystem when `/dev/neutron0` is first opened, so it can't come from inside the container. Install the SDK 3.0.1 build (version-matched to the bundled userspace) once per board:
+
+```sh
+sudo mkdir -p /opt/neutron
+sudo curl -fsSL -o /opt/neutron/NeutronFirmware.elf \
+  https://repo.edgefirst.ai/firmware/imx95/3.0.1/NeutronFirmware.elf
+
+# point the kernel's firmware loader at it (searched before /lib/firmware; -n is required)
+echo -n /opt/neutron | sudo tee /sys/module/firmware_class/parameters/path
+```
+
+The file at `repo.edgefirst.ai` is a convenience mirror; the firmware originates from NXP's public Neutron repository, [github.com/nxp-imx/neutron](https://github.com/nxp-imx/neutron).
+
+Make it persistent across reboots with the kernel command line (`firmware_class.path=/opt/neutron` in your bootloader `bootargs`) or a systemd-tmpfiles drop-in (`w /sys/module/firmware_class/parameters/path - - - - /opt/neutron` in `/etc/tmpfiles.d/`). Or skip the custom path and place the file at `/lib/firmware/NeutronFirmware.elf`, where the kernel always looks. No reboot is needed — the firmware loads on demand at the first inference.
 
 ## Running with elevated privileges
 
@@ -155,7 +172,9 @@ The profiler runs fine as a normal user, but some measurements benefit from — 
 
 When a run fails on a privilege-related error, the TUI detects it and offers to retry under `sudo` — using passwordless `sudo` where available, otherwise prompting for your password (held only in memory and wiped after use). The elevated invocation preserves only a safe allowlist of environment variables.
 
-To keep output artifacts owned by your user after an elevated run, pass `--output-owner <uid:gid|username>` (or set `EDGEFIRST_OUTPUT_OWNER`); the profiler reassigns ownership of the results once the run completes, so nothing is left root-owned.
+After an elevated run, the profiler reassigns ownership of the results so nothing is left root-owned: it auto-detects the owner from the output location (the bind-mounted working dir), or you can set it explicitly with `--output-owner <uid:gid|username>` (or `EDGEFIRST_OUTPUT_OWNER`).
+
+**In Docker**, the `sudo` retry does not apply — the images are distroless (no `sudo`) and run as root by default, with privilege granted at `docker run` time. The profiler detects the absent `sudo` and skips the prompt. The simplest way to grant device access and real-time scheduling together is `--privileged` (recommended for now); it already includes `CAP_SYS_NICE`, so SCHED_FIFO works without a separate `--cap-add SYS_NICE`. To avoid `--privileged`, grant device access with explicit `--device` flags and add `--cap-add SYS_NICE` for real-time scheduling.
 
 ## Built on the EdgeFirst Perception Foundation
 
