@@ -112,22 +112,30 @@ Pre-built images publish to `ghcr.io/edgefirstai/profiler-cli` on every release 
 
 Immutable per-release tags follow `VERSION-VARIANT` (e.g. `1.6.1-onnx`); the `imx95` and `imx8mp` tags are arm64-only. The `ara240` (Kinara Ara-2) and `hailo` (Hailo-8 / Hailo-8L) images are on the roadmap.
 
-Mount a named volume at `/config` for the cache and EdgeFirst Studio auth token (it persists across runs), and bind-mount your working directory at `/workdir`. `--user "$(id -u):$(id -g)"` keeps output files owned by your local user.
+Mount a named volume at `/config` for the cache and EdgeFirst Studio auth token — it persists across runs. The common Studio workflow needs nothing else mounted; bind-mounting a working directory at `/workdir` is only for the advanced CLI form below.
 
-**EdgeFirst Studio session** — pulls the model and validation session from Studio, so nothing from the host needs mounting (omit `-v "$PWD":/workdir`):
+**Launch the TUI** — the default invocation opens the interactive dashboard. Press `F2` to connect to EdgeFirst Studio (log in once; the token persists in the volume) and pull models + validation sessions, or `F3` to browse for local models:
 
 ```sh
-# log in once (interactive); the token is saved in the named volume
 docker run -it --rm -v edgefirst:/config \
-  ghcr.io/edgefirstai/profiler-cli:onnx login
-
-# profile a Studio session and publish results
-docker run --rm -v edgefirst:/config \
-  ghcr.io/edgefirstai/profiler-cli:onnx \
-  validate --session-id v-abc123 --publish
+  ghcr.io/edgefirstai/profiler-cli:onnx
 ```
 
-**CPU ONNX (CLI)**
+The same launch works for every variant — add only that variant's GPU or device flags:
+
+```sh
+# NVIDIA discrete GPU (amd64) — Jetson / Orin uses --runtime nvidia in place of --gpus all
+docker run -it --rm --gpus all -v edgefirst:/config \
+  ghcr.io/edgefirstai/profiler-cli:cuda
+
+# NXP i.MX 95 Neutron NPU — i.MX 8M Plus uses --device /dev/galcore in place of /dev/neutron0
+docker run -it --rm \
+  --device /dev/neutron0 --device /dev/dma_heap/linux,cma \
+  -v edgefirst:/config \
+  ghcr.io/edgefirstai/profiler-cli:imx95
+```
+
+**Advanced — CLI with local files.** To profile a model from the host non-interactively, bind-mount a working directory at `/workdir`, drop `-it`, and pass a `validate` command. `--user "$(id -u):$(id -g)"` keeps output files owned by your local user:
 
 ```sh
 docker run --rm --user "$(id -u):$(id -g)" \
@@ -136,29 +144,7 @@ docker run --rm --user "$(id -u):$(id -g)" \
   validate --model /workdir/model.onnx --images /workdir/val --count 100
 ```
 
-**NVIDIA discrete GPU (amd64)**
-
-```sh
-docker run --rm --gpus all --user "$(id -u):$(id -g)" \
-  -v edgefirst:/config -v "$PWD":/workdir \
-  ghcr.io/edgefirstai/profiler-cli:cuda \
-  validate --model /workdir/model.onnx --provider cuda --images /workdir/val
-```
-
-Jetson / Orin uses `--runtime nvidia` in place of `--gpus all`.
-
-**NXP i.MX 95 Neutron NPU**
-
-```sh
-docker run --rm \
-  --device /dev/neutron0 \
-  --device /dev/dma_heap/linux,cma \
-  -v edgefirst:/config -v "$PWD":/workdir \
-  ghcr.io/edgefirstai/profiler-cli:imx95 \
-  validate --model /workdir/model_neutron.tflite
-```
-
-The i.MX 8M Plus image (`imx8mp`) works the same way — pass `--device /dev/galcore` and your board's `dma_heap` subnode instead.
+The same `-v "$PWD":/workdir` mapping combines with any variant's GPU/device flags — e.g. add `--gpus all --provider cuda` for discrete-GPU CUDA, or the `--device` flags for an NPU image.
 
 ## Running with elevated privileges
 
