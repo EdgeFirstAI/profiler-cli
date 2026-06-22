@@ -95,6 +95,68 @@ edgefirst-profiler validate --session-id v-abc123 --publish
 
 <p align="center"><img alt="File Browser" src="assets/tui-files.png" width="780"></p>
 
+## Run with Docker
+
+Pre-built images publish to `ghcr.io/edgefirstai/profiler-cli` on every release — pull and run, no toolchain required.
+
+> **`onnx` / `latest` run inference on the CPU.** GPU measurement requires the `cuda` tag — throughput measured on the `onnx`/`latest` images reflects CPU performance regardless of the GPU in the host.
+
+| Tag | Arch | Use for |
+|---|---|---|
+| `onnx` / `latest` | amd64 + arm64 | CPU ONNX inference (default; CPU-only) |
+| `tflite` | amd64 + arm64 | CPU TFLite inference |
+| `cuda` | amd64 + arm64 | NVIDIA discrete GPU (amd64) or Jetson / Orin (arm64) |
+| `imx95` | arm64 only | NXP i.MX 95 Neutron NPU |
+| `imx8mp` | arm64 only | NXP i.MX 8M Plus VSI NPU |
+| `core` | amd64 + arm64 | Binary only — base image for custom runtime mounts |
+
+Immutable per-release tags follow `VERSION-VARIANT` (e.g. `1.6.1-onnx`); the `imx95` and `imx8mp` tags are arm64-only.
+
+Mount a named volume at `/config` for the cache and EdgeFirst Studio auth token (it persists across runs), and bind-mount your working directory at `/workdir`. `--user "$(id -u):$(id -g)"` keeps output files owned by your local user.
+
+**CPU ONNX (CLI)**
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v edgefirst:/config -v "$PWD":/workdir \
+  ghcr.io/edgefirstai/profiler-cli:onnx \
+  validate --model /workdir/model.onnx --images /workdir/val --count 100
+```
+
+**NVIDIA discrete GPU (amd64)**
+
+```sh
+docker run --rm --gpus all --user "$(id -u):$(id -g)" \
+  -v edgefirst:/config -v "$PWD":/workdir \
+  ghcr.io/edgefirstai/profiler-cli:cuda \
+  validate --model /workdir/model.onnx --provider cuda --images /workdir/val
+```
+
+Jetson / Orin uses `--runtime nvidia` in place of `--gpus all`.
+
+**NXP i.MX 95 Neutron NPU**
+
+```sh
+docker run --rm \
+  --device /dev/neutron0 \
+  --device /dev/dma_heap/linux,cma \
+  -v "$PWD":/workdir \
+  ghcr.io/edgefirstai/profiler-cli:imx95 \
+  validate --model /workdir/model_neutron.tflite
+```
+
+The i.MX 8M Plus image (`imx8mp`) works the same way — pass `--device /dev/galcore` and your board's `dma_heap` subnode instead.
+
+## Running with elevated privileges
+
+The profiler runs fine as a normal user, but some measurements benefit from — or require — elevated privileges on the target:
+
+- **Real-time scheduling.** Many systems cap real-time priority for normal users (`RLIMIT_RTPRIO=0`). Running under `sudo` lets the profiler request `SCHED_FIFO` for the inference dispatch threads, tightening the gap between consecutive device executions. Without elevation, scheduling stays at normal priority and profiling continues unaffected.
+- **Accelerator device access.** Reaching NPU and accelerator devices on embedded targets — `/dev/neutron0` (i.MX 95 Neutron), `/dev/galcore` (i.MX 8M Plus VSI), or the Ara240 proxy — often requires elevated privileges unless your user has been granted access.
+
+When a run fails on a privilege-related error, the TUI detects it and offers to retry under `sudo` — using passwordless `sudo` where available, otherwise prompting for your password (held only in memory and wiped after use). The elevated invocation preserves only a safe allowlist of environment variables.
+
+To keep output artifacts owned by your user after an elevated run, pass `--output-owner <uid:gid|username>` (or set `EDGEFIRST_OUTPUT_OWNER`); the profiler reassigns ownership of the results once the run completes, so nothing is left root-owned.
 
 ## Built on the EdgeFirst Perception Foundation
 
@@ -104,10 +166,13 @@ The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https:/
 
 | Vendor / family | Notes |
 |---|---|
-| NVIDIA Jetson Orin / Orin Nano | aarch64; CUDA execution provider via ONNX Runtime |
-| NXP i.MX 95 | aarch64; Neutron NPU via the TFLite delegate |
-| Hailo-8 / Hailo-8L | HailoRT runtime via HEF models; host-agnostic (Raspberry Pi, x86_64, or any Linux machine) |
-| Kinara Ara-2 | DVM models via the `ara2-proxy` daemon |
+| NVIDIA Jetson Orin / Orin Nano | aarch64; CUDA execution provider via ONNX Runtime (JetPack 6.2 / L4T R36.4, CUDA 12.6). Docker: `cuda` |
+| NVIDIA discrete GPU (x86_64) | CUDA execution provider; compute capability sm_70+ (Volta and newer). Docker: `cuda` |
+| NXP i.MX 95 | aarch64; Neutron NPU via the TFLite delegate. Validated on FRDM-IMX95-PRO, Toradex Verdin iMX95, and PHYTEC phyFLEX-i.MX 95. Docker: `imx95` |
+| NXP i.MX 8M Plus | aarch64; VSI/Vivante NPU via the VX TFLite delegate. Docker: `imx8mp` |
+| Kinara / NXP Ara-2 (Ara240) | DVM models via the `ara2-proxy` daemon |
+| Hailo-8 / Hailo-8L | HailoRT runtime via HEF models; host-agnostic (Raspberry Pi 5, x86_64, or any Linux machine) |
+| Apple Silicon (macOS arm64) | CoreML execution provider (CPU / GPU / ANE) |
 | Generic Linux x86_64 / macOS / Windows | CPU profiling and Studio workflow |
 
 ## Documentation, support, status
