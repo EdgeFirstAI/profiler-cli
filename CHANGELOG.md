@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-06-24
+
+### Added
+
+- **Output files are owned by your user automatically in Docker.** When the profiler runs elevated (the Docker root default, or under sudo) and you bind-mount a working directory, results are reassigned to that directory's owner automatically — no `--output-owner` needed. The explicit `--output-owner` / `EDGEFIRST_OUTPUT_OWNER` still overrides.
+
+### Changed
+
+- **Validation now decodes boxes with multi-label accuracy by default.** Validation and local-prediction runs — any run that scores a model against a dataset of images — now emit one detection candidate per class above the confidence threshold per anchor, matching the Ultralytics `val multi_label=True` decode that COCO mAP evaluation expects, instead of collapsing each anchor to a single argmax class. The box DFL head also now always dequantizes per-channel when the model is per-channel quantized, rather than collapsing to a single per-tensor scale. Together these recover a systematic accuracy delta versus the reference validator — measured **+0.56 pp box / +0.45 pp mask mAP** on COCO val2017 (yolov8n-seg) and up to **~1.6–4.7 pp INT8 mAP** on per-channel-quantized yolo26 box heads. Throughput and model-only profiling are unaffected: they stay on the single-class argmax decode so latency and FPS numbers are never inflated by the extra per-class candidates.
+- **Container images run as root by default.** The Docker images now default to the root user, so NPU/GPU device access and real-time scheduling work without passing `--user root`. To run unprivileged instead, pass `--user "$(id -u):$(id -g)"`.
+
+### Fixed
+
+- **Validation no longer appears to hang when a device cannot run a model.** If an accelerator rejects every inference (for example a firmware or driver mismatch on an embedded NPU), the run now stops promptly and reports the underlying device error, instead of silently skipping every frame while the dashboard appears frozen.
+- **No crash when offering privilege elevation in a minimal container.** In a container image without `sudo`, the profiler now skips the elevation offer and continues at normal scheduling priority, rather than failing to start the run.
+
 ## [1.6.1] - 2026-06-22
 
 ### Added
