@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-06-25
+
+### Added
+
+- **Power monitoring on Linux devices with a supported power sensor.** Boards with an on-board power monitor now report live power draw on Linux, where the gauges previously always read zero. Each rail is shown under its real name — for example an NVIDIA Jetson's board-input rail and its per-component breakdown — and the session report now includes a board-power line. On targets with no supported sensor, power is reported as unavailable (with a one-time note) rather than shown as a row of zeros.
+- **More temperature sensors are reported on Linux.** Sensors exposed only through the hwmon interface — such as the Raspberry Pi 5's RP1 controller and an i.MX95 on-board I3C sensor — are now captured alongside the standard thermal zones, so the temperature readout reflects more of what the board actually measures.
+
+### Changed
+
+- **Power meters now reflect the sensors the device actually has.** The profiler shows a power meter only for each rail it can detect: the CPU/GPU/ANE/DRAM meters on Apple Silicon, and the real board rails on Linux. Devices with no power sensor show no power meters at all, instead of four meters pinned at 0 W.
+- **CPU inference runs now report a compute phase for more accurate throughput modeling.** When a model runs on the CPU, Studio can now derive a true compute-bound throughput estimate from the timing breakdown. Accelerator runs (such as Apple CoreML or NVIDIA CUDA) are unaffected.
+- **`validate --training-session` now creates and publishes a Studio validation session by default.** Running `edgefirst-profiler validate --training-session t-XXX --model <artifact>` (without a `--session-id`) now creates the validation session, launches the validator, and publishes results to Studio — the same flow the interactive TUI performs — instead of only profiling the model locally. Pass `--no-publish` to keep the previous profile-only behavior (no session created; results written to disk). On read-only/public projects, where a session cannot be created, the run automatically falls back to a local profiling run.
+
+### Fixed
+
+- **Board power is no longer over-reported on devices with a multi-rail power monitor.** On hardware that exposes a board-total rail alongside its per-component rails (such as the NVIDIA Jetson Orin Nano), the total was added to its own components and to unrelated diagnostic channels, inflating the figure several-fold (a measured ~6.7 W board reported as ~29 W). Board power is now counted once, with its true per-rail breakdown.
+- **macOS per-component power readings no longer spike to impossible values.** On Apple Silicon the CPU, memory, and Neural Engine power gauges could briefly report wildly high values (thousands of watts) because those sensors update less often than the GPU. Each gauge is now scaled correctly however frequently its sensor reports, including the very first reading.
+- **Placeholder temperatures no longer skew the reported average.** On some NXP i.MX95 boards, PMIC thermal zones report a fixed 105 °C when not actively sensing; these are now excluded so the average temperature reflects the real die temperature rather than being inflated by the placeholder.
+
 ## [1.6.2] - 2026-06-24
 
 ### Added
