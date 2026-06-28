@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-06-27
+
+### Added
+
+- **A `--serialize-core` flag on `validate` for clean per-stage latency runs.** This is the command-line equivalent of the dashboard's **s** launch shortcut: it runs every core pipeline stage one frame at a time (no overlap), giving contention-free per-frame latency to compare against the overlapped, throughput-oriented default run. Image decode stays concurrent, and any explicit `--preprocess-depth` / `--inference-depth` / `--postprocess-depth` / `--mask-depth` you also pass takes precedence over the preset.
+
 ## [1.8.0] - 2026-06-27
 
 ### Added
