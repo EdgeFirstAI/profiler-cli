@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-06-27
+
+### Added
+
+- **A serialized-core latency preset in the launch dialog.** Press **s** in the dashboard's runtime launch dialog to run with every pipeline stage depth set to 1, so a single inference flows through with no overlap. This gives a clean per-stage latency measurement instead of the overlapped, throughput-oriented timing of the default **Enter** (Auto) launch. It joins the existing Auto and **c** Customize-depths options.
+- **NXP Ara240 traces now show a per-layer breakdown of NPU compute time.** For models built with a recent converter (≥ 2.5.0), the NPU compute phase in the trace is split into one slice per layer, in execution order and named by layer (for example `model.22.dfl.Softmax`), so you can see which layers dominate the compute time rather than only its total. The split is an estimate of each layer's share of the measured compute time — the Ara240 reports no per-layer hardware timings — so treat it as relative guidance. Models from older converters show only the total, as before.
+
+### Changed
+
+- **`--model` is now rejected with a clear error when it cannot be used, instead of being silently ignored or misread.** Passing `--model <path>` together with `--session-id` did nothing (the validation session defines its own model); passing a local file path with `--training-session` — where `--model` selects a Studio artifact *by name* — failed later with a confusing "artifact not found". Both combinations now fail fast with an explanatory message. Validating a local model still works with `--model` on its own.
+
+### Removed
+
+- **The persistent CoreML compile cache.** macOS CoreML runs no longer keep a compiled-model cache on disk. The cache could grow without bound, and could serve a stale compiled model after a model file changed in place (for example a re-export or an in-place fix) — so a corrected model sometimes still failed to load. The model is now compiled fresh each run; this one-time compile happens during session setup and does not affect measured inference timings.
+
 ## [1.7.0] - 2026-06-25
 
 ### Added
