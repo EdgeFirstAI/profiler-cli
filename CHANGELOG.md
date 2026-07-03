@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-07-03
+
+### Fixed
+
+- **The Left arrow now goes up a directory in the dashboard's Files tab.** It previously did nothing there, even though it works as a "back" key in the Studio tab; the Files tab only responded to Backspace. Left and Backspace now both move up a directory, so navigation is consistent across tabs.
+- **A clearer error when the TFLite runtime library can't be found.** A TFLite run that cannot locate the TensorFlow Lite runtime now explains that the native `libtensorflow-lite.so` is required — not the Python `tflite`/`tflite_runtime` package, which is why installing those appeared to do nothing — and points you to set `TFLITE_LIBRARY_PATH` to the library (the prebuilt container images already bundle it). Previously the failure was a bare "Failed to load TFLite library" with no guidance.
+- **Running out of disk space while writing the trace is now reported instead of passing silently.** Trace writes were best-effort, so a full disk could quietly truncate the trace with no error and the run could appear to stall. The profiler now reports a clear "ran out of disk space" message the first time a trace write fails and stops writing the trace, rather than repeatedly retrying a full disk.
+- **A failed connection to the NXP Ara240 NPU proxy now always explains that elevated privileges are usually needed.** Connecting to the proxy commonly fails because it requires elevated access while `ara2.service` is running; the error now says so — suggesting `sudo` or adding your user to the `ara2`/`render` group — whatever the underlying message was. Previously this hint only appeared when the system reported an explicit "permission denied", so a generic "connection refused" left the real cause unexplained.
+
+### Changed
+
+- **The Studio model explorer lists only recognized model files.** A training session's artifact list in the dashboard now shows just the recognized model formats (ONNX, TFLite, DVM, Hailo, TensorRT), hiding label files, archives, and other non-model artifacts. Previously you could select one of those and start a run, which downloaded the dataset and model assets — and even uploaded to Studio — before failing.
+- **Clearer guidance when a read-only or Sample Project can't host a validation session.** The dashboard dialog now explains that you can still run the model locally to see its on-device performance without publishing (the "Continue profiling-only" choice), and that publishing results requires creating your own project. Previously it only stated that permission was denied and suggested copying the dataset, leaving the run-locally option unclear.
+- **CUDA inference timing is now measured on the GPU's own clock.** On Linux, the per-frame run time for a model using the CUDA execution provider is now measured with the GPU's own clock instead of the host clock, removing host scheduling jitter from the reported number. This only affects the precision of the measurement — a run can still include an implicit data transfer, as before — and falls back to the previous host-clock measurement automatically if the GPU clock is unavailable.
+- **CPU-only TFLite runs now show a `compute` phase instead of `invoke`.** Models run with no delegate or with the XNNPACK delegate — genuinely on the CPU, with no NPU hand-off — now label their inference phase `compute` in the trace and in `report` output, matching the label already used for CPU ONNX Runtime runs. Runs using an NPU or other external TFLite delegate are unaffected and still show `invoke`.
+
 ## [1.8.1] - 2026-06-27
 
 ### Added
