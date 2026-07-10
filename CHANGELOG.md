@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-10
+
+### Removed
+
+- **The non-functional `--json` flag on `validate` has been removed.** It was accepted but had no effect — no JSON report was ever produced. Passing it now fails with an unknown-argument error; remove it from scripts. A machine-readable report may return in a future release as a properly implemented feature.
+
+### Fixed
+
+- **Incomplete cached validation datasets are now detected and re-downloaded.** The profiler previously skipped dataset downloads whenever any images were present in the cache, so a partial download (or an outdated copy from before hierarchical sequence folders were fully supported) could leave validation runs profiling only a handful of images. Before skipping a download, the profiler now compares the number of val images Studio reports for the dataset against a recursive count of cached images and re-downloads when they do not match.
+
+### Changed
+
+- **Skipped frames and other warnings now appear on the console by default.** `validate` previously wrote warnings (corrupt images, decoder errors, frame loss) only to `<output>/profiler.log` unless `RUST_LOG` was set, so a run could silently skip frames with nothing on screen. Warnings now print to stderr by default, and the `-v`/`-vv`/`-vvv` flags — previously accepted but non-functional — now raise the console verbosity to info/debug/trace. An explicit `RUST_LOG` still takes precedence.
+
+- **Model-only runs (`validate --model` without `--images`) now produce the same rich output as the dashboard's benchmark.** The CLI and TUI now share one benchmark implementation, so a model-only CLI run gains a live progress bar, system telemetry (CPU/memory/thermal/power) in the trace, and a full device trace with per-iteration inference sub-phases (bind/compute/extract), Neutron per-tick breakdowns, and ONNX Runtime per-node profiling — previously these were only produced by the dashboard. TFLite model-only runs now capture Neutron profiling automatically, matching full-pipeline behavior; other backends capture per-layer profiling only when `--layer-profile` is passed.
+
 ## [1.8.2] - 2026-07-03
 
 ### Fixed
