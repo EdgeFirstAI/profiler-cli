@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-07-25
+
+### Added
+
+- **Image load and decode is now reported as its own `capture` stage, and is often the real bottleneck.** Previously the time spent reading and JPEG/PNG-decoding each image was folded into `preprocess`, so it never appeared in the timing summary and the reported bottleneck was whichever compute stage came next. On a fast accelerator this is usually wrong: a 5000-image COCO run that reported `inference` as the bottleneck at 914 FPS was in fact capture-bound at 864 FPS, with preprocess itself overstated at 3.13 ms instead of 0.64 ms. Capture now appears in the console summary, `metrics.yaml`, and the published charts alongside the other stages.
+- **New "what could this run without the decode bottleneck" figures.** The timing summary now reports `capture_bound` — whether image load and decode is what limits the run — plus `compute_bottleneck_stage` and `compute_bottleneck_fps`, the stage that would limit throughput if capture were free, and at what rate. This separates a dataset/codec limit from a model limit: a benchmark fed by JPEG files can be bound by the host's decoder while the accelerator has headroom to spare, and a deployed camera delivers frames already decoded at its own frame rate. The compute ceiling is reported as a named stage rather than an inference-only number, because with a heavy postprocess it is not always inference that binds next.
+
+### Fixed
+
+- **Cloud validation runs launched from EdgeFirst Studio now work.** Every run launched as a Studio app failed immediately with a JSON parsing error, because the Studio-provided server address was combined with the API path twice and the request reached the web front end instead of the API. Runs started this way now connect correctly.
+
 ## [1.10.0] - 2026-07-25
 
 ### Added
