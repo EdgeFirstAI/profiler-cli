@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.11.2] - 2026-07-26
+
+### Fixed
+
+- **A cloud validation's published metrics now include the measured `timing.trace` section.** Runs launched from EdgeFirst Studio uploaded their trace and its charts but left the metrics document itself without the trace-derived block — the measured frame count, FPS summary, per-stage timing statistics, and the model's top kernels by total execution time. Its absence was easy to miss precisely because the charts were there. Runs started from the profiler's own dashboard, and re-validations of an existing session, already included it; a dispatched run now matches them. A run whose trace cannot be read fails with a clear message instead of quietly publishing metrics that disagree with the charts beside them.
+- **A run whose system monitoring produced no samples now recovers CPU, memory, power, and temperature from its own trace when publishing to Studio.** This fallback already applied to dashboard runs and re-validations; cloud runs published without the telemetry even though the trace had recorded it. Runs that did collect live samples keep them unchanged.
+
 ## [1.11.1] - 2026-07-26
 
 ### Fixed
