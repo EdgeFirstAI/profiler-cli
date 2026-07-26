@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-07-25
+
+### Added
+
+- **Pick the hardware a cloud validation runs on, from a new Hardware menu in the launch form.** Cloud runs previously always used the same small shared-CPU instance. The launch form now offers a choice of dedicated machines — Graviton4 at 8 or 48 cores, Intel Sapphire Rapids at 8 or 48 cores, and an NVIDIA A10G GPU — alongside the existing cost-optimized default. Each option runs on one instance type and nothing else shares that machine, so throughput measured on it is comparable between runs and against other models, which the default is not: it runs on Fargate, where the underlying processor varies from run to run and is not recorded. GPU runs use the CUDA execution provider automatically; the GPU option serves ONNX models only, since there is no CUDA build for TFLite. The default is unchanged, so an existing launch that ignores the new menu behaves exactly as before.
+
+### Changed
+
+- **Cloud validation no longer runs on interruptible capacity.** Validation runs previously used discounted instances that AWS can reclaim mid-run. Because downloading the dataset is the most expensive part of a run, an interruption did not cost the remaining work — it cost the entire download again, wiping out the saving, and the restarted run's timing was indistinguishable from a genuinely slow model. Every queue that runs a validation is now dedicated capacity. Only the short pre-launch step that starts a run still uses discounted capacity, where an interruption costs a few seconds.
+
 ## [1.10.1] - 2026-07-25
 
 ### Added
