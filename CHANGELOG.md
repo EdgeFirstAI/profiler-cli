@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-07-26
+
+### Changed
+
+- **The hardware options in the launch form are now named for the EC2 instance they run on.** `graviton-few`, `graviton-many`, `cpu-x86-few`, `cpu-x86-many`, and `cuda-x86` become `m8g-2xlarge`, `c8g-12xlarge`, `m7i-2xlarge`, `c7i-12xlarge`, and `g5-2xlarge`. The old names described the shape of a class rather than its hardware, so a published throughput number could not be attributed to a specific machine without consulting a separate table — and two classes of the same "size" on different processor generations were indistinguishable in a session label. The menu entries also now state the processor, vCPU count, and memory. Saved launch configurations that name an old class must be updated; the default option is unchanged and keeps its name.
+
+### Added
+
+- **Every cloud validation session now records the exact instance type and hardware specification it ran on, in its description.** A session reads, for example, `Cloud run on c8g.12xlarge (AWS Graviton4, 48 vCPU (48 physical cores, no SMT), 96 GiB instance RAM)`. Physical cores are stated separately from vCPUs because they differ by processor: 48 vCPUs are 48 cores on Graviton and 24 cores plus SMT on Intel, so two equally-sized options do not deliver equal throughput. Memory is labelled as the instance's total, which is deliberately larger than the memory the run's container is given — the smaller request is what stops two runs sharing one machine, and a run that shared a machine could not be timed reliably. A session is now self-describing: reading it later needs no lookup against a configuration that may since have changed.
+
 ## [1.11.2] - 2026-07-26
 
 ### Fixed
