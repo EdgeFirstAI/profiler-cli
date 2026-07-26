@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-07-26
+
+### Fixed
+
+- **Cloud validation sessions now include the run's execution trace, and the charts and measured timing that depend on it.** A validation launched from EdgeFirst Studio wrote its trace file into a different directory than the one it published from, so no session ever received a trace. Without it a session showed no device execution-timing charts and no system-telemetry charts (CPU, memory, power, temperature), no per-stage overlap or worker-occupancy detail, and its throughput was reported on an estimated basis rather than measured from the run's own timing. Re-validating such a session reported the same estimate rather than real numbers. New runs now publish the full set. Sessions published before this release cannot be repaired — their traces were never uploaded — so re-run any whose timing you intend to compare or publish.
+- **Re-running validation on a session no longer destroys that run's trace.** `validate --session-id <id> --reprocess` downloaded the original run's trace on top of the trace the current run was still writing, and when the session had no stored trace to fetch, deleted the current one outright. The downloaded trace is now kept under its own name, so a reprocess keeps both.
+- **A re-validation now writes its results beside the session, not into `./results`.** `--reprocess` left `metrics.yaml` and the predictions file in the default output directory while the rest of the run's files went to the session's own directory, so a single run's artifacts ended up split across two places. An explicit `--output` still overrides this, as before.
+- **`--output-owner` now applies to the directory a session run actually writes to.** It was reassigning ownership of the default output directory instead, leaving the run's real artifacts owned by the elevated user.
+
 ## [1.11.0] - 2026-07-25
 
 ### Added
