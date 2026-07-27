@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-07-27
+
+### Changed
+
+- **`--inference-depth` now accepts up to 16 concurrent inferences on a CPU, rather than silently capping at 8.** On a 48-core machine throughput was still climbing at the old limit, so the limit — not the hardware — was setting the ceiling. Automatic selection is unchanged on every current target; only an explicitly requested depth can go higher. The depth dialog in the terminal interface still offers up to 8; use the flag for more.
+
 ## [1.13.0] - 2026-07-27
 
 ### Fixed
