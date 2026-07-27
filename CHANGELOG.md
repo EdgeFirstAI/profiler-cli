@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-07-27
+
+### Fixed
+
+- **CPU inference no longer leaves part of the machine idle at most depths.** The cores were divided evenly between the concurrent inferences and whatever did not divide exactly went unused — at 14 concurrent inferences on a 48-core machine that idled 12 cores, about a third of it, and measured 20% slower than 13. The leftover cores are now distributed, so every depth uses the whole machine and neighbouring depths can be compared fairly.
+
 ## [1.13.1] - 2026-07-27
 
 ### Changed
