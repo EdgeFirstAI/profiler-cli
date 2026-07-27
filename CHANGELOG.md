@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [1.12.0] - 2026-07-26
+## [1.13.0] - 2026-07-27
+
+### Fixed
+
+- **TFLite throughput on a CPU now scales with the machine's core count.** TFLite ran a single inference at a time regardless of the hardware, so a bigger machine bought almost nothing — a 48-core host measured within 4% of an 8-core one on the same model. It now runs several inferences at once, as ONNX Runtime already did. Targets with their own measured tuning, such as the i.MX 95, are unchanged, as are NPU delegates that can only accept one inference at a time. `--inference-depth` still overrides the automatic choice.
+- **A CPU run no longer reports an inference capacity far below the frame rate it just measured.** Where several inferences ran at once, the reported capacity counted only one of them, so a run could publish a ceiling several times lower than its own measured throughput. Accelerator runs are unaffected.
 
 ### Changed
 
