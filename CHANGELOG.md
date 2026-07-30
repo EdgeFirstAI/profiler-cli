@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-07-29
+
+### Changed
+
+- **The Studio launch form no longer asks for a validation session.** Cloud runs are started from a training session, an artifact, and the Hardware choice alone. The job that runs on the selected instance creates the validation session for that training+artifact pair and publishes into it. Re-scoring an existing validation session remains available from the profiler CLI (`dispatch --session-id`), not from the Studio form.
+
 ## [1.14.0] - 2026-07-29
 
 ### Added
