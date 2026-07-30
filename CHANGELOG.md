@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.14.2] - 2026-07-29
+
+### Added
+
+- **Cloud and Studio-connected validation runs now upload `platform.yaml` with the rest of the session artifacts.** The structured host-identity file written next to `metrics.yaml` is retained on the Studio session alongside predictions and the trace, so it can be listed and downloaded later. A typed Studio platform API for filtering and display is still to come; until then the file is the durable record.
+
 ## [1.14.1] - 2026-07-29
 
 ### Changed
