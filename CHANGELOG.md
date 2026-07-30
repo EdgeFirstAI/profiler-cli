@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-07-29
+
+### Added
+
+- **A new `platform.yaml` is written alongside `metrics.yaml` with structured host identity.** Where `metrics.yaml` records the run's results, `platform.yaml` records the machine that ran it: architecture, processor, accelerator, board, OS, memory, and — for cloud-managed instances — the requested compute class and the actual EC2 instance type and id (queried from IMDSv2, best-effort). It mirrors the four-tier EFPI hardware taxonomy the profiler already uses internally, giving a machine-comparable source of truth where previously only the free-text session `description` existed. The `description` field is retained and gains a `Cloud:` line for AWS Batch runs; `platform.yaml` is the canonical record consumers group, filter, and join on.
+- **[TUNING.md](TUNING.md) documents how to tune pipeline depth for your own hardware.** It covers what the defaults are based on and their limits, every flag and environment variable that overrides them, and a method for measuring your own — including how to tell a real improvement from measurement noise. Worth reading if you run the profiler on hardware or alongside a workload we have not measured, since the defaults assume a machine running the profiler and nothing else.
+
+### Changed
+
+- **The profiler now chooses how many inferences to run at once from the machine's core count, and runs many more of them on a multi-core CPU.** The previous choice — four on a 48-core machine, one on an 8-core machine — measured well below what the hardware could do: benchmarking across a range of machines found 25% more throughput on ONNX and 92% more on TFLite at 48 cores, and 37% / 140% more at 8 cores. Machines from 1 to 96 cores each have a default drawn from those measurements. `--inference-depth` and the `INFERENCE_DEPTH` environment variable override it as before, and hardware with its own measured tuning, such as the i.MX 95, is unaffected.
+- **Accuracy scoring against ground truth now streams predictions and annotations instead of loading both tables fully into memory.** Segmentation validation in particular uses far less peak memory (about 1.2–1.6 GiB versus multi‑GiB before on a full COCO‑scale run), so scoring can finish on memory‑constrained devices and mobile apps without a separate host reprocess. Detection and segmentation scores stay the same as before.
+
+### Fixed
+
+- **Sequenced validation images now match predictions for metrics scoring.** Studio stores ground truth as `(sequence_name, frame)` while the profiler keys predictions by the image file stem (`{sequence}_{frame}`). Scoring previously joined on `name` alone, so every frame of a sequence collapsed into one bucket and sequenced-only runs reported near-zero true positives even when inference covered the full set. Ground-truth names are now canonicalised to the file-stem form (with zero-padding normalised), so Cups-style hierarchical datasets score correctly end to end.
+
 ## [1.13.2] - 2026-07-27
 
 ### Fixed
