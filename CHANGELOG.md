@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.14.3] - 2026-07-30
+
+### Fixed
+
+- **ONNX FP32 accuracy on Arm CPUs is correct again.** Arm BF16 fast-math GEMM was enabled by default on every 64-bit Arm host, which quietly computed each model's `MatMul` and `Gemm` nodes in bfloat16 — a third of the precision — while the run was still reported as FP32. Models whose attention blocks use those operators were badly affected: on Linux Arm, YOLO11 and YOLO26 scored mAP 0.048 where the identical model file scores 0.378 on x86, with most objects never detected at all. YOLOv5 and YOLOv8 were unaffected, having no such operators, as were macOS and x86, whose ONNX Runtime builds do not include the option. Arm FP32 runs are now genuinely FP32 and match x86. Set `EDGEFIRST_ORT_BF16_FASTMATH=1` to opt back in for throughput experiments, bearing in mind that such a run is not an FP32 measurement. Previously published Arm results for the affected models should be re-scored.
+
 ## [1.14.2] - 2026-07-29
 
 ### Added
