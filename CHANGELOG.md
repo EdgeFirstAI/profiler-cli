@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.14.7] - 2026-08-04
+
+### Changed
+
+- **The Studio launch form now shows a model selector block instead of free-text environment fields.** Launching from Studio now presents a structured "Select Model" group with trainer artifact selection, reducing manual input and making launches more consistent. The Hardware selector remains available on the same form.
+
 ## [1.14.6] - 2026-08-04
 
 ### Fixed
