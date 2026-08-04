@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.14.6] - 2026-08-04
+
+### Fixed
+
+- **Studio app launches now reliably pass the selected training session and artifact into the profiler process.** When a run is launched from Studio, the container startup step now reads those two values from the launch payload and exports them as runtime environment variables before the profiler starts, so dispatch receives the intended session/artifact pair. If payload extraction fails, the run now continues with a warning instead of aborting at container startup.
+
+
 ## [1.14.3] - 2026-07-30
 
 ### Fixed
