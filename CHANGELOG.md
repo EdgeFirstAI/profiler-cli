@@ -6,18 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [1.14.7] - 2026-08-04
+## [1.15.0] - 2026-08-04
+
+### Added
+
+- **Experimental GPU and Qualcomm QNN support in the TFLite interface.** `--delegate gpu` (built with `--features tflite`) and `--delegate qnn` (built with `--features qnn`) are available to try. Neither ships its vendor library, and neither can yet report how much of the model actually reached the accelerator, so both are excluded from published hardware comparisons for now.
+- **`system-info --delegate`** previews the session name a real run would produce.
 
 ### Changed
 
-- **The Studio launch form now shows a model selector block instead of free-text environment fields.** Launching from Studio now presents a structured "Select Model" group with trainer artifact selection, reducing manual input and making launches more consistent. The Hardware selector remains available on the same form.
-
-## [1.14.6] - 2026-08-04
+- **Launching a run from EdgeFirst Studio now offers a model picker instead of two text boxes.** Choose the project, experiment, and training session from dropdowns, then pick the artifact from a list. The Hardware chooser is unchanged. Launching from the command line or from `docker run` is unaffected.
+- **`--delegate` rejects unrecognized names** instead of treating a typo as a file path, and lists the valid options in the error.
+- **`platform.yaml` is now schema version 2**, separating the accelerator from the route used to reach it. Older files remain readable; EdgeFirst Studio must be updated before schema-2 sessions are published into a shared corpus.
 
 ### Fixed
 
-- **Studio app launches now reliably pass the selected training session and artifact into the profiler process.** When a run is launched from Studio, the container startup step now reads those two values from the launch payload and exports them as runtime environment variables before the profiler starts, so dispatch receives the intended session/artifact pair. If payload extraction fails, the run now continues with a warning instead of aborting at container startup.
-
+- **Accelerator labels on sessions published before this release are unreliable and should not be used for hardware comparisons.** A session could be tagged with hardware it never ran on: an explicitly chosen `--delegate` could be overridden in the label by an installed vendor NPU, and a `--provider coreml-*` or `--provider cuda` run that fell back to CPU kept the accelerator it had asked for. Both now report what actually ran. Re-run and republish to get a trustworthy label.
+- **TFLite runs on an NPU delegate no longer get the concurrency setting meant for CPU**, which could start a single-inference NPU with a CPU-sized default.
+- **CoreML runs on macOS no longer print per-operation device-placement diagnostics to the terminal.**
 
 ## [1.14.3] - 2026-07-30
 
