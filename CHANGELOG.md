@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-08-09
+
+### Added
+
+- **Qualcomm Hexagon HTP acceleration for ONNX models on Android, via `--provider qnn-htp`.** Takes a Qualcomm-precompiled `*.qnn.onnx` artifact and runs it on the NPU through ONNX Runtime's QNN execution provider, giving Snapdragon devices the same ONNX-against-TFLite comparison the profiler already offers on Apple silicon. Verified end to end on a Snapdragon 8 Elite Gen 5. The device must supply the Qualcomm runtime and an ONNX Runtime built with QNN support — the profiler ships neither, and records which libraries a run actually loaded. On any non-Android host the run falls back to the CPU provider and says so. Accuracy and residency reporting are not yet available for this route, so it is excluded from published hardware comparisons for now.
+
+### Fixed
+
+- **The Qualcomm QNN and GPU delegates can now be found on Android.** Both were previously reported as not installed on every Android device, however the application bundled them, because the profiler looked for them at a Linux filesystem path that does not exist on Android. They are now located the way Android locates native libraries, so a correctly packaged app gets the accelerator it asked for instead of a confident "not present".
+- **Android measurements are less affected by other activity on the device.** The work that drives each inference now runs at a raised scheduling priority, as it already did on macOS, iOS, and Linux. Where the system declines the request the run continues as before, and says so.
+- **Validation no longer fails at the very end of a run on datasets whose images are named like `20260710_141224`.** Any dataset with a flat (non-sequenced) annotation file and image names ending in an underscore followed by digits — timestamp-named captures being the common case — aborted after the full profiling run completed, with `unable to find column "frame"`. The run's predictions and trace were still written, but no accuracy metrics were produced and nothing was published. Such datasets now score normally; re-run, or re-score an existing run's predictions with `--predictions`, to get the metrics.
+
+### Changed
+
+- **The Qualcomm backend previously offered as `qnn-cpu` is now `qnn-dsp`.** There is no CPU backend in the Qualcomm delegate — `qnn-cpu` named something that could never run, while the real legacy DSP backend was missing. Sessions published with a `qnn-cpu` selector did not reach a Qualcomm accelerator.
+- **Asking for a QNN delegate in a build that does not include QNN support now says exactly that**, and names the option to rebuild with. Previously it reported the vendor library as missing — a different problem with a different fix, and one the user could not act on.
+- **A new `--sahi-convert <tiled|full>` option controls how each SAHI tile reaches the model.** `tiled` colour-converts every tile individually at the source; `full` converts the whole frame once and crops tiles out of it. Left unset, the shape is resolved per platform — every platform defaults to `tiled` today, since no platform has a measured crossover yet. Per-image results now report the tiling window time alongside the merge time that was already recorded, and how many tile conversions fell back off the accelerator during the run.
+- **A new `--sahi-overlap <ratio>` option overrides the SAHI tile overlap for a run.** Previously the overlap came only from the model's own embedded configuration, so comparing overlap settings meant re-exporting the model. Now a single flag sweeps it: lower overlap plans fewer tiles per image (faster, fewer duplicate detections at tile seams), higher overlap gives small objects at tile boundaries more chances to land whole inside a tile. Left unset, the model's embedded value is used when present; otherwise the profiler falls back to **10%** overlap (was 20%), which is faster and has measured at least as accurate in initial testing without metadata.
+- **Dependencies updated to their latest releases.** EdgeFirst Studio client to 2.13 (fractional organization credits deserialize correctly; JSON-RPC auth and permission failures are typed consistently across every Studio call), plus routine `cargo update` refreshes across the rest of the tree.
+
 ## [1.15.0] - 2026-08-04
 
 ### Added
