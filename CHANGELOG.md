@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.16.1] - 2026-08-15
+
+### Fixed
+
+- **Tiled inference (`--sahi`) no longer loses frames on hosts without a zero-copy image path.** Wherever the profiler falls back to CPU staging — desktop Linux and the `profiler-cli` container images — sibling tiles of one frame competed for that frame's single decoded image buffer. The loser failed with `Tensor(PboMapped)`, and a single failed tile abandoned its entire frame, so a `--sahi` run reported a small fraction of the detections it should have, or ended in `All frames failed — cannot produce report`. Because a frame with no prediction is scored as a complete miss, affected runs that still produced a report show **understated accuracy**, and measured throughput covered fewer frames than requested. A run is affected only if it used `--sahi` **and** reports a non-zero skipped-frame count; such runs should be re-run. Hosts with a zero-copy convert were never affected, and keep their full pre-processing parallelism now as before — the embedded targets, and Apple silicon running the `.fp16.onnx` models.
+- **`--images` is no longer ignored when profiling a training session.** `--training-session <id> --images <dir>` silently profiled the training session's own validation dataset instead of the directory given, unless `--no-publish` happened to be passed as well. The custom images now override the session's dataset as documented, with the same warning that validation is disabled for them because they carry no ground truth of their own.
+- **Two profiler runs sharing one dataset cache no longer damage each other's download.** Starting a second `validate` while a first was still downloading — most easily two containers mounting the same cache volume — let the second judge the half-downloaded dataset incomplete and delete it underneath the first. That surfaced as `Failed to clear dataset cache: Directory not empty`, or, worse, as a run that quietly profiled fewer images than the dataset holds and scored the result anyway. A run that finds another already working on the same dataset now waits for it and reuses the finished download.
+
+### Changed
+
+- **Every run report now states whether tiled inference was used**, rather than mentioning SAHI only when it was on. Naming an existing validation session repeats that session with the flags given now — it does not restore the ones its earlier run used — so a re-run that left out `--sahi` was indistinguishable from the tiled run whose results it replaced. The help for `--session-id` now says this as well.
+- **EdgeFirst HAL updated to 0.28.3.** Faster JPEG decoding, and image conversion now uses a single fused RGB path that measures faster than the previous two-stage route.
+- **Documentation for `--preprocess-depth` corrected.** The help text and reference docs claimed pre-processing was limited to a single worker when staging images through the CPU. It has not been limited that way for some time — both pipeline shapes fan out, and the default is four workers. The documented behaviour, not the actual behaviour, was wrong.
+
 ## [1.16.0] - 2026-08-09
 
 ### Added
