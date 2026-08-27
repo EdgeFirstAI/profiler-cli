@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.16.2] - 2026-08-27
+
+### Fixed
+
+- **The TUI's Profiler screen no longer captures a full per-operation trace by default.** Its `Op profiling` toggle started checked, so every run launched from that screen — even a quick local benchmark — recorded per-node/per-tick timing for every frame. On a longer run this could grow the trace file into the gigabytes, large enough that uploading it to Studio timed out. The toggle now starts unchecked, matching `--layer-profile` and the Studio validation flow; turn it on deliberately when you need the op-level breakdown.
+- **A validation session's predictions and metrics no longer fail to publish just because the trace upload failed.** If `trace.pftrace` was very large or the upload was interrupted (e.g. a timeout), the whole publish to Studio used to abort — even though predictions had already uploaded successfully. A failed trace upload is now reported as a warning and the rest of the run still publishes normally. The upload popup also labels that case as "upload failed" instead of claiming the trace was never produced.
+- **A run now warns when dataset images are silently skipped instead of saying nothing.** Some captured datasets contain image files with no file extension at all; those were invisible to both the dataset-cache completeness check and the run's own image loader, with no indication anything was missing — a dataset could be under-validated by a large margin with no error, and re-downloading it never fixed the count. Such files are now reported in a warning naming how many were found and where, so the gap is visible immediately instead of being discovered by cross-referencing counts across runs.
+
+### Changed
+
+- **Built-in help and reference docs corrected to match 1.16.1 behaviour.** The Hailo `--batch-size` help no longer claims a hard cap of 6 — device batching is under development, so values above 1 are accepted with a warning and the run proceeds per frame. The dashboard's help screen now lists all five pipeline-depth sliders, including Materialize Masks, and no longer advertises a file filter that does not exist. The reference docs now state the measured post-processing default of two workers, document the SAHI tile-overlap and score-threshold model metadata keys, list every environment variable the profiler accepts in the container images, and add a study of what per-tensor INT8 quantization costs against Studio's per-channel models ([QUANTIZATION.md](QUANTIZATION.md)).
+
 ## [1.16.1] - 2026-08-15
 
 ### Fixed
