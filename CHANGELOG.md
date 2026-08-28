@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.16.4] - 2026-08-28
+
+### Fixed
+
+- **Ground-truth metrics after a validation run no longer stall the CPU for tens of minutes on large datasets.** Deployment matching (the CFP/LFP table) used to pad every image to a square 300×300 assignment, which on a poorly calibrated model — 300 boxes per image, all at score ≈ 1 — burned a core for ~45 minutes on a 5 000-image val set. Matching is now rectangular and scored across CPU cores; a re-run of the same path finished in a few minutes. `--max-det` (default **300**, the Ultralytics `val` limit) is the single per-image cap: post-NMS output, the COCO evaluation pool, and that matching table all use it. COCO AP still reports at maxDets 1/10/100 within that pool.
+
 ## [1.16.3] - 2026-08-27
 
 ### Fixed
