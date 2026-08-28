@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.16.3] - 2026-08-27
+
+### Fixed
+
+- **The TUI launch modal no longer hides run toggles or lists execution providers that cannot run on this host.** SAHI tiling and per-operation profiling are shown as separate vertical rows (styled like the existing tiling control) with `t` and `p` shortcuts, instead of cramming every hint into a single footer line. Op profiling at launch follows the F4 Configure default and is off unless toggled on. Opening **Customize pipeline depths** (`c`) no longer crashes when the auto inference depth exceeds the slider cap on many-core hosts. On Linux, the ONNX provider list now shows only runnable EPs (CPU and CUDA when present) — Apple CoreML rows are omitted rather than listed as unavailable.
+
 ## [1.16.2] - 2026-08-27
 
 ### Fixed
