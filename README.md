@@ -95,6 +95,68 @@ edgefirst-profiler validate --session-id v-abc123 --publish
 
 <p align="center"><img alt="File Browser" src="assets/tui-files.png" width="780"></p>
 
+## Model Metadata
+
+The profiler resolves decoder configuration and class labels in three
+steps, highest precedence first:
+
+1. **Embedded metadata** — inside the model artifact itself (ONNX
+   `metadata_props`; a ZIP trailer appended to TFLite, DVM, HEF and
+   TensorRT engine files), so a single file is enough to deploy.
+2. **Sidecar `edgefirst.json`** (+ optional `labels.txt`) next to the
+   model file — manual configuration for any backend, without touching
+   the model artifact. It overrides auto-discovery but not embedded
+   metadata: an artifact that carries its own still wins. A sidecar that
+   fails to parse is an error, not a silent fallback, so fix it or
+   remove it rather than have the run quietly resolve some other way.
+   Write to `support@au-zone.com` for the schema and for help producing
+   one for a custom head.
+3. **Auto-discovery** — for a vanilla Ultralytics YOLOv8/YOLO11/YOLO26
+   detection or segmentation export (ONNX or TFLite, including int8, and
+   YOLO26's NMS-free head), the profiler infers the decoder configuration
+   and class count from the model's own I/O tensors and export metadata.
+   No embedding step, no sidecar. The console prints which family it
+   matched, e.g. `Auto-configured: Ultralytics YOLOv8/11 detect, 80
+   classes`.
+
+When none of the three apply the profiler runs in timing-only mode —
+latency and throughput are still measured, but no predictions are decoded
+and no accuracy is reported — and prints format-specific guidance on
+stderr.
+
+## Tutorial: Ultralytics + COCO, fully offline
+
+[**ULTRALYTICS.md**](ULTRALYTICS.md) walks through validating a standard
+Ultralytics export end to end with no EdgeFirst Studio account and no
+network access after the initial downloads: export the model, convert a
+COCO dataset with `edgefirst-client`, run the validation, and read the
+results. It covers ONNX and TFLite including int8, YOLO26 with and
+without an end-to-end head, Apple silicon through CoreML, how the
+profiler's numbers compare with `yolo val`'s own, and what each of the
+five files a run writes is for.
+
+The short version:
+
+```sh
+pip install "ultralytics>=8.4.83" edgefirst-client "onnx>=1.12.0,<2.0.0" "onnxslim>=0.1.82" onnxruntime
+yolo export model=yolo11n.pt format=onnx imgsz=640
+
+edgefirst-client coco-to-arrow instances_val2017.json \
+  -o val2017/val2017.arrow --images ~/coco/val2017 --link
+
+edgefirst-profiler validate -m yolo11n.onnx \
+  -i val2017/val2017 --ground-truth val2017/val2017.arrow \
+  --no-publish -o results/
+```
+
+The same flow works from the TUI: launch `edgefirst-profiler`, press
+**F3**, pick the model, then choose **Validate** and pick the dataset (or
+**Benchmark** for a latency-only run with no dataset at all).
+
+EdgeFirst Studio remains the recommended integrated experience — session
+tracking, dashboards and fleet benchmarking across devices — and the same
+artifacts publish there automatically once you're connected.
+
 ## Run with Docker
 
 Pre-built images publish to `ghcr.io/edgefirstai/profiler-cli` on every release — pull and run, no toolchain required.
@@ -195,6 +257,7 @@ The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https:/
 
 ## Documentation, support, status
 
+- **Tutorial:** [ULTRALYTICS.md](ULTRALYTICS.md) — validate a YOLOv8/11/26 model against COCO fully offline, including Apple silicon.
 - **Reference documentation:** [edgefirst.studio](https://edgefirst.studio) (the EdgeFirst Profiler section, when published).
 - **Issues:** use the [GitHub issue tracker](https://github.com/EdgeFirstAI/profiler-cli/issues) — bug-report and feature-request templates are provided.
 - **Support, sales, anything else:** `support@au-zone.com`.
