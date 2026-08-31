@@ -95,6 +95,80 @@ edgefirst-profiler validate --session-id v-abc123 --publish
 
 <p align="center"><img alt="File Browser" src="assets/tui-files.png" width="780"></p>
 
+## Tutorial: Ultralytics + COCO, fully offline
+
+You can validate any standard Ultralytics detection or instance-segmentation
+export — YOLOv8, YOLO11, or YOLO26, ONNX or TFLite, including int8 and
+YOLO26's NMS-free heads — against a COCO dataset with no EdgeFirst Studio
+account and no network access after the initial downloads. The result is a
+full COCO accuracy report (`metrics.yaml`), every prediction the model made
+(`predictions.parquet`), and a Perfetto trace (`trace.pftrace`).
+
+**1. Export the model** ([docs.ultralytics.com/modes/export](https://docs.ultralytics.com/modes/export/)):
+
+```sh
+pip install ultralytics
+yolo export model=yolo11n.pt format=onnx imgsz=640
+# int8 TFLite (calibration data required):
+yolo export model=yolo11n.pt format=tflite int8=True data=coco8.yaml imgsz=640
+```
+
+**2. Convert a COCO dataset** — `edgefirst-client`'s `coco-to-arrow`
+command turns a COCO annotation file into the EdgeFirst Dataset Format the
+profiler validates against, fully offline once the JSON and images are
+local:
+
+```sh
+pip install edgefirst-client   # or the released binary
+edgefirst-client coco-to-arrow instances_val2017.json \
+  -o val2017/val2017.arrow --images ~/coco/val2017 --link
+```
+
+**3. Run validation:**
+
+```sh
+edgefirst-profiler validate -m yolo11n.onnx \
+  -i val2017/val2017 --ground-truth val2017/val2017.arrow \
+  --no-publish -o results/
+```
+
+The console prints how the decoder was auto-configured — for example
+`Auto-configured: Ultralytics YOLOv8/11 detect, 80 classes` — no
+`edgefirst.json` needed for a vanilla export. Dropping an `edgefirst.json`
+next to the model overrides auto-detection for a custom head or class set.
+
+The same flow works from the TUI: launch `edgefirst-profiler`, press **F3**,
+pick the model, then choose **Validate** and pick the dataset (or
+**Benchmark** for an immediate latency/throughput-only run with no dataset).
+
+**4. Inspect the results:**
+
+- `results/metrics.yaml` — mAP50-95, per-class AP, and timing percentiles.
+- `results/predictions.parquet` — every prediction, in EdgeFirst Dataset
+  Format. Re-grade it any time without touching the model or images again:
+
+  ```sh
+  edgefirst-profiler validate --predictions results/predictions.parquet \
+    --ground-truth val2017/val2017.arrow --trace results/trace.pftrace
+  ```
+
+- `results/trace.pftrace` — drag it into
+  [ui.perfetto.dev](https://ui.perfetto.dev/) to see per-stage and
+  per-operator timing.
+
+Auto-discovered Ultralytics models agree with `yolo val`'s own reported mAP
+to within about a point on a 128-image sample across YOLOv8/11/26; the
+evaluator itself is verified bit-for-bit against `pycocotools`. For an
+apples-to-apples comparison against `yolo val`, add
+`--conf-threshold 0.001 --iou-threshold 0.7`. See the [profiler
+repository's tutorial](https://github.com/EdgeFirstAI/profiler/blob/main/ULTRALYTICS.md)
+for the full walkthrough and validation-methodology reference.
+
+EdgeFirst Studio remains the recommended integrated experience — session
+tracking, dashboards, and fleet benchmarking across devices — and the same
+artifacts from this tutorial publish there automatically once you're
+connected.
+
 ## Run with Docker
 
 Pre-built images publish to `ghcr.io/edgefirstai/profiler-cli` on every release — pull and run, no toolchain required.
