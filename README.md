@@ -204,3 +204,5 @@ The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https:/
 <p align="center">
   <sub>Copyright © 2026 Au-Zone Technologies Inc. — Part of <a href="https://edgefirst.studio">EdgeFirst Studio</a>.</sub>
 </p>
+
+<img referrerpolicy="no-referrer" src="https://px.edgefirst.ai/a.png?x-pxid=fad1e7b6-dd71-4ad8-b66f-604adf51490e" alt="" width="1" height="1" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;" />
