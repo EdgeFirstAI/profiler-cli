@@ -113,7 +113,7 @@ jobs:
 
       # Selects this distribution's files into dist/ and asserts each one
       # carries the version, which a PyPI upload cannot take back.
-      - uses: EdgeFirstAI/.github/.github/actions/stage-pypi@STAGE_PYPI_SHA
+      - uses: EdgeFirstAI/.github/.github/actions/stage-pypi@9f698bee471b68d231c39586af7b610f4080df09
         with:
           distribution: edgefirst-profiler
           # Already downloaded above, so the action takes the path as it stands.
