@@ -1,0 +1,138 @@
+# PUBLISH. Uploads this release's wheels to PyPI.
+#
+# The profiler itself is built in EdgeFirstAI/profiler, which is private. Its
+# publish.yml attaches the wheels to the release here alongside the binary
+# archives, then flips the release out of draft -- and that is what triggers
+# this workflow. Nothing is built here; the assets are already final.
+#
+# Why PyPI is published from this repository rather than from profiler:
+# a Trusted Publishing upload records the publishing repository in the
+# provenance PyPI then serves to anyone, signed in or not. Publishing from
+# the private repository attested a repository the public cannot open, and
+# named it in the process. Publishing here attests the repository that is
+# already the public home of the release.
+#
+# Why this is the last step of a release, not an earlier one:
+# a PyPI version is immutable -- it can be yanked but never replaced. Every
+# other step of the release is re-runnable, so the one that is not goes last,
+# after the release it belongs to is already public. A failure here leaves a
+# published release whose wheels are missing, which is recoverable by running
+# this again; the reverse order is not.
+#
+# Action Versions (hash-pinned per Au-Zone SPS v2.1):
+# - pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # v1.13.0
+#
+# Trusted Publisher Configuration:
+# - PyPI: https://pypi.org/manage/project/edgefirst-profiler/settings/publishing/
+#   Owner: EdgeFirstAI, Repository: profiler-cli, Workflow: publish.yml,
+#   Environment: pypi
+#   PyPI matches on the workflow FILENAME, so renaming this file rejects the
+#   upload on the next release.
+name: Publish
+
+on:
+  release:
+    types: [published]
+  # Re-run for a release that is already published: the upload is the one step
+  # of a release that cannot be re-driven by re-cutting the tag, because the
+  # version may already be partly on PyPI. `skip-existing` makes it safe.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag whose wheels to upload, e.g. v1.17.0'
+        required: true
+        type: string
+
+concurrency:
+  group: publish-pypi-${{ github.event.release.tag_name || inputs.tag }}
+  # A half-finished upload is not a state anything can recover from.
+  cancel-in-progress: false
+
+jobs:
+  publish-pypi:
+    name: Publish wheels to PyPI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: pypi
+      url: https://pypi.org/project/edgefirst-profiler/
+    permissions:
+      contents: read     # read the release and download its assets
+      id-token: write    # exchanged for the PyPI Trusted Publishing claim
+    steps:
+      - name: Resolve the release
+        id: r
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+            echo "::error::'$TAG' is not vX.Y.Z or vX.Y.Z-rcN"
+            exit 1
+          fi
+          version="${TAG#v}"
+          # SemVer -- and therefore the tag -- spells a pre-release 1.17.0-rc1;
+          # PEP 440, and so the wheel filename maturin writes, spells it
+          # 1.17.0rc1.
+          {
+            echo "tag=$TAG"
+            echo "version=${version/-rc/rc}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Download the wheels from the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.r.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # Only wheels. edgefirst-profiler is closed source, so no sdist is
+          # ever published; the release's other assets are binary archives,
+          # which PyPI would reject after the wheels had already landed.
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.whl' --dir dist --clobber
+          ls -la dist/
+
+      - name: Verify what will be uploaded
+        env:
+          PEP440: ${{ steps.r.outputs.version }}
+        run: |
+          set -euo pipefail
+          mapfile -t wheels < <(find dist -type f -name '*.whl' | sort)
+          if [[ ${#wheels[@]} -eq 0 ]]; then
+            echo "::error::the release carries no wheels"
+            exit 1
+          fi
+          # A PyPI version is immutable, so a wheel naming the wrong one is
+          # found when it can no longer be corrected. The version is the
+          # second '-' separated field of a wheel filename.
+          fail=0
+          for f in "${wheels[@]}"; do
+            got="$(cut -d- -f2 <<< "$(basename "$f")")"
+            if [[ "$got" == "$PEP440" ]]; then
+              echo "ok  $(basename "$f")"
+            else
+              echo "::error::$(basename "$f") carries version '$got', expected '$PEP440'"
+              fail=1
+            fi
+          done
+          [[ "$fail" -eq 0 ]] || exit 1
+          {
+            echo "### Uploading ${#wheels[@]} wheel(s) to PyPI"
+            echo '```'
+            printf '%s\n' "${wheels[@]##*/}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Directly in the job, never through a composite action of ours. This
+      # action resolves its own container image from the repository it is
+      # called from and identifies itself by numeric repository ID, so nested
+      # in one of our actions it resolves to that repository and fails on an
+      # image that does not exist.
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # v1.13.0
+        with:
+          packages-dir: dist
+          # A re-run after a partial upload must not fail on the files that
+          # already landed.
+          skip-existing: true
