@@ -1,6 +1,17 @@
 EdgeFirst Profiler CLI
 Copyright (c) 2026 Au-Zone Technologies Inc.
 
+First-Party Components
+======================
+
+These components are original works of Au-Zone Technologies Inc.,
+proprietary, and covered by the terms in LICENSE:
+
+    edgefirst-profiler
+    edgefirst-vision-pipeline
+    edgefirst-metrics
+    edgefirst-validator
+
 Third-Party Components — Installer Scripts
 ==========================================
 
