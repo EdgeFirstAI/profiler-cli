@@ -70,14 +70,32 @@ jobs:
             echo "::error::'$TAG' is not vX.Y.Z or vX.Y.Z-rcN"
             exit 1
           fi
-          version="${TAG#v}"
-          # SemVer -- and therefore the tag -- spells a pre-release 1.17.0-rc1;
-          # PEP 440, and so the wheel filename maturin writes, spells it
-          # 1.17.0rc1.
+          # The tag spelling is handed on as it is: stage-pypi normalises a
+          # candidate to the PEP 440 form the wheel filename carries.
           {
             echo "tag=$TAG"
-            echo "version=${version/-rc/rc}"
+            echo "version=${TAG#v}"
           } >> "$GITHUB_OUTPUT"
+
+      # `gh release download` resolves a DRAFT release for an authenticated
+      # caller, so a dispatch naming a tag whose release has not been published
+      # would put its wheels on PyPI first -- the ordering this workflow exists
+      # to keep, inverted by the one trigger that can bypass it. The release
+      # trigger cannot reach here with a draft; the dispatch can.
+      - name: Refuse a draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.r.outputs.tag }}
+        run: |
+          set -euo pipefail
+          draft="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')"
+          if [[ "$draft" == "true" ]]; then
+            echo "::error::${TAG} is still a draft. PyPI is the last step of a release"
+            echo "::error::and cannot be taken back, so it runs only once the release is"
+            echo "::error::public. Publish the release; that triggers this workflow."
+            exit 1
+          fi
+          echo "${TAG} is published"
 
       - name: Download the wheels from the release
         env:
@@ -85,44 +103,36 @@ jobs:
           TAG: ${{ steps.r.outputs.tag }}
         run: |
           set -euo pipefail
-          mkdir -p dist
+          mkdir -p staged
           # Only wheels. edgefirst-profiler is closed source, so no sdist is
           # ever published; the release's other assets are binary archives,
           # which PyPI would reject after the wheels had already landed.
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --pattern '*.whl' --dir dist --clobber
-          ls -la dist/
+            --pattern '*.whl' --dir staged --clobber
+          ls -la staged/
 
-      - name: Verify what will be uploaded
-        env:
-          PEP440: ${{ steps.r.outputs.version }}
+      # Selects this distribution's files into dist/ and asserts each one
+      # carries the version, which a PyPI upload cannot take back.
+      - uses: EdgeFirstAI/.github/.github/actions/stage-pypi@STAGE_PYPI_SHA
+        with:
+          distribution: edgefirst-profiler
+          # Already downloaded above, so the action takes the path as it stands.
+          artifact: ""
+          path: staged
+          version: ${{ steps.r.outputs.version }}
+
+      - name: Assert wheels only
         run: |
           set -euo pipefail
-          mapfile -t wheels < <(find dist -type f -name '*.whl' | sort)
-          if [[ ${#wheels[@]} -eq 0 ]]; then
-            echo "::error::the release carries no wheels"
+          # stage-pypi also selects <distribution>-*.tar.gz, which is right for
+          # a repository that publishes an sdist. This one must not: the
+          # profiler is closed source and an sdist would ship it.
+          mapfile -t others < <(find dist -type f ! -name '*.whl' | sort)
+          if [[ ${#others[@]} -gt 0 ]]; then
+            echo "::error::non-wheel files staged for PyPI:"
+            printf '::error::  %s\n' "${others[@]}"
             exit 1
           fi
-          # A PyPI version is immutable, so a wheel naming the wrong one is
-          # found when it can no longer be corrected. The version is the
-          # second '-' separated field of a wheel filename.
-          fail=0
-          for f in "${wheels[@]}"; do
-            got="$(cut -d- -f2 <<< "$(basename "$f")")"
-            if [[ "$got" == "$PEP440" ]]; then
-              echo "ok  $(basename "$f")"
-            else
-              echo "::error::$(basename "$f") carries version '$got', expected '$PEP440'"
-              fail=1
-            fi
-          done
-          [[ "$fail" -eq 0 ]] || exit 1
-          {
-            echo "### Uploading ${#wheels[@]} wheel(s) to PyPI"
-            echo '```'
-            printf '%s\n' "${wheels[@]##*/}"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
 
       # Directly in the job, never through a composite action of ours. This
       # action resolves its own container image from the repository it is
