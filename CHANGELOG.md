@@ -4,6 +4,14 @@ All notable changes to the **EdgeFirst Profiler CLI** are documented in this fil
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.1] - 2026-09-22
+
+### Fixed
+
+- **A standard Ultralytics model no longer warns that its results may be silently wrong.** Every validation of a stock `yolo export` model reported that no class labels had been found, that predictions would be labelled `unknown`, and that grading would fall back to class index — a warning that accuracy could be quietly incorrect. None of it was happening. An Ultralytics export carries its class list under `names`, which the profiler reads and uses; the warning was raised while loading the model, before the class list had been resolved, and so described a fallback that the run then did not take. Scores were correct throughout; only the warning was wrong.
+
+  The check now runs once the class list is known, whatever supplied it — the model, a `labels.txt` sidecar, or auto-detection — so it reports the case it names and stays quiet otherwise. It also covers every model format, where before it was raised for ONNX alone and a TFLite or CoreML model genuinely missing its labels said nothing at all.
+
 ## [1.17.0] - 2026-09-22
 
 ### Added
