@@ -4,6 +4,16 @@ All notable changes to the **EdgeFirst Profiler CLI** are documented in this fil
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.2] - 2026-09-24
+
+### Security
+
+- **Updated the HTTP/2 and TLS libraries the profiler uses to talk to Studio, fixing two published advisories.** An HTTP/2 peer could stream unbounded empty data frames at the client (RUSTSEC-2026-0258), and TLS 1.3 handshake messages were accepted across encryption-level boundaries (RUSTSEC-2026-0285).
+
+### Changed
+
+- **The Ultralytics tutorial is now published with each release, and its fp16 export helper refuses models it cannot convert faithfully.** The helper that produces the matched fp16 CoreML/ONNX pair for Apple silicon previously accepted any checkpoint, and a segmentation, RT-DETR, or end-to-end model came out as a silently truncated or mismatched pair. It now stops with a message naming why. The tutorial's install commands now also state the minimum package versions the walkthrough needs, so an older Ultralytics already installed is upgraded rather than rejecting the export options the tutorial uses.
+
 ## [1.17.1] - 2026-09-22
 
 ### Fixed
