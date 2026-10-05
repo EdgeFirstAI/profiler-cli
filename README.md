@@ -52,7 +52,13 @@ irm https://raw.githubusercontent.com/EdgeFirstAI/profiler-cli/main/install.ps1 
 pip install --user edgefirst-profiler
 ```
 
-The wheel ships the same precompiled native binary as the curl / PowerShell installers — `pip install` simply drops it into the Python environment of your choice. Use `--user` for a per-user install (the binary lands on your Python user-scripts path — `~/.local/bin/` on Linux, `~/Library/Python/<ver>/bin/` on macOS), inside a `venv` for project-local, or with `sudo` for a system-wide install. Wheels are published for Linux x86_64 / aarch64 (manylinux2014) and macOS arm64; Windows wheels are planned. See the [PyPI project page](https://pypi.org/project/edgefirst-profiler/) for the version index.
+The wheel ships the same precompiled native binary as the curl / PowerShell installers — `pip install` simply drops it into the Python environment of your choice. Use `--user` for a per-user install (the binary lands on your Python user-scripts path — `~/.local/bin/` on Linux, `~/Library/Python/<ver>/bin/` on macOS, `%APPDATA%\Python\Python3XY\Scripts` on Windows), inside a `venv` for project-local, or with `sudo` for a system-wide install. Wheels are published for Linux x86_64 / aarch64 (manylinux2014), macOS arm64 and Windows x86_64. See the [PyPI project page](https://pypi.org/project/edgefirst-profiler/) for the version index.
+
+For `--provider cuda` on Linux x86_64 or Windows x86_64, add the `cuda` extra. It installs the CUDA build of ONNX Runtime together with NVIDIA's CUDA 12 and cuDNN 9 runtime wheels (about 2 GB) into the same environment, where the profiler finds them without the environment being activated:
+
+```sh
+pip install "edgefirst-profiler[cuda]"
+```
 
 **Pin a specific version**
 
@@ -71,6 +77,49 @@ The installer detects your OS and architecture, fetches the matching release art
 ```sh
 edgefirst-profiler --version
 ```
+
+### Windows
+
+The Windows release (installer and wheel) runs on Windows 10 and 11 x86_64 and bundles everything needed for the CPU and DirectML execution providers:
+
+- ONNX Runtime 1.22 (Microsoft's DirectML build), for `--provider cpu` and `--provider directml` on any Direct3D 12 GPU.
+- DirectML 1.15.4, the redistributable the DirectML provider needs.
+- ANGLE, which the HAL uses for Direct3D 11 GPU preprocessing.
+
+The profiler and ONNX Runtime need the [Microsoft Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe) (2015–2022, x64). Most PCs already have it; the installer tells you when it is missing.
+
+### CUDA on Windows
+
+`--provider cuda` needs an NVIDIA GPU of compute capability 7.0 (Volta) or newer, a current NVIDIA driver, the CUDA 12 and cuDNN 9 runtime libraries, and the CUDA build of ONNX Runtime. None of these are bundled, because together they are about 2 GB.
+
+**With Python**, `pip install "edgefirst-profiler[cuda]"` installs all of them (see [Install](#install)).
+
+**Without Python** (PowerShell installer), set them up once:
+
+| Component | Supported versions | Download |
+|---|---|---|
+| NVIDIA driver | R570 or newer | [NVIDIA drivers](https://www.nvidia.com/en-us/drivers/) |
+| CUDA runtime | CUDA 12.8 or newer 12.x | [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads?target_os=Windows&target_arch=x86_64), or the runtime-only [redistributable archives](https://developer.download.nvidia.com/compute/cuda/redist/) |
+| cuDNN | 9.x for CUDA 12 | [cuDNN](https://developer.nvidia.com/cudnn-downloads?target_os=Windows&target_arch=x86_64), or the [redistributable archives](https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/windows-x86_64/) |
+| ONNX Runtime (CUDA build) | 1.22.0 | [`onnxruntime-win-x64-gpu-1.22.0.zip`](https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-win-x64-gpu-1.22.0.zip) |
+
+1. Install the NVIDIA driver.
+2. Install the CUDA Toolkit; only the CUDA Runtime, cuBLAS and cuFFT components are needed. The installer adds `%CUDA_PATH%\bin` to `PATH`. From the redistributable archives instead, take `bin\*.dll` from `cuda_cudart`, `libcublas` and `libcufft` and put them in a folder on `PATH`.
+3. Install cuDNN 9 for CUDA 12 and add its `bin` folder to `PATH` (the cuDNN installer does not), for example `C:\Program Files\NVIDIA\CUDNN\v9.x\bin\12.x`.
+4. Stage the CUDA build of ONNX Runtime where the profiler looks for it:
+
+   ```powershell
+   $ort = "$env:LOCALAPPDATA\edgefirst-profiler\onnxruntime\cuda"
+   New-Item -ItemType Directory -Force $ort | Out-Null
+   $zip = "$env:TEMP\onnxruntime-win-x64-gpu-1.22.0.zip"
+   Invoke-WebRequest https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-win-x64-gpu-1.22.0.zip -OutFile $zip
+   Expand-Archive $zip "$env:TEMP\ort-gpu" -Force
+   Copy-Item "$env:TEMP\ort-gpu\onnxruntime-win-x64-gpu-1.22.0\lib\*.dll" $ort
+   ```
+
+5. Open a new terminal so the `PATH` changes apply, and run with `--provider cuda`. When a piece is missing, the profiler stops with an error naming it rather than running on the CPU.
+
+The DLLs ONNX Runtime's CUDA provider loads are `cudart64_12.dll`, `cublas64_12.dll`, `cublasLt64_12.dll`, `cufft64_11.dll` and `cudnn64_9.dll` (with cuDNN's `cudnn_*64_9.dll` sub-libraries beside it).
 
 ## Examples
 
@@ -247,7 +296,8 @@ The EdgeFirst Profiler is built on the [EdgeFirst Perception Foundation](https:/
 | Vendor / family | Notes |
 |---|---|
 | NVIDIA Jetson Orin / Orin Nano | aarch64; CUDA execution provider via ONNX Runtime (JetPack 6.2 / L4T R36.4, CUDA 12.6). Docker: `cuda` |
-| NVIDIA discrete GPU (x86_64) | CUDA execution provider; compute capability sm_70+ (Volta and newer). Docker: `cuda` |
+| NVIDIA discrete GPU (x86_64) | CUDA execution provider; compute capability sm_70+ (Volta and newer). Docker: `cuda`. Windows: see [CUDA on Windows](#cuda-on-windows) |
+| Direct3D 12 GPU on Windows (NVIDIA, AMD, Intel) | DirectML execution provider (`--provider directml`), bundled with the Windows release |
 | NXP i.MX 95 | aarch64; Neutron NPU via the TFLite delegate. Validated on FRDM-IMX95-PRO, Toradex Verdin iMX95, and PHYTEC phyFLEX-i.MX 95. Docker: `imx95` |
 | NXP i.MX 8M Plus | aarch64; VSI/Vivante NPU via the VX TFLite delegate. Docker: `imx8mp` |
 | Kinara / NXP Ara-2 (Ara240) | DVM models via the `ara2-proxy` daemon |
