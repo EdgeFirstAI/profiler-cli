@@ -5,7 +5,10 @@
     Detects platform, downloads the matching release asset from
     GitHub, verifies SHA-256, and installs to a per-user or
     system-wide directory depending on whether the script runs
-    elevated.
+    elevated. On Windows the archive also carries ONNX Runtime
+    (CPU and DirectML), DirectML and ANGLE, which are installed
+    beside the executable. CUDA is not installed: see the
+    "CUDA on Windows" section of the README.
 .PARAMETER Version
     Specific version to install. Defaults to latest release.
 .PARAMETER Prefix
@@ -86,14 +89,14 @@ function Get-DefaultPrefix {
     return Join-Path $env:LOCALAPPDATA 'Programs\edgefirst-profiler'
 }
 
+$Script:ShippedPlatforms = @('linux-x86_64', 'linux-aarch64', 'macos-aarch64', 'windows-x86_64')
+
 function Test-PlatformBinariesAvailable {
-    # Returns $true if release archives exist for the given OS today.
-    # Windows builds are not yet shipped by the release pipeline; the
-    # installer should give a friendly error rather than attempt a 404
-    # download. Update this when the release workflow adds windows-x86_64
-    # to its build matrix.
-    param([string]$OS)
-    return ($OS -ne 'windows')
+    # Returns $true if release archives exist for the given platform, so
+    # the installer gives a friendly error rather than attempt a 404
+    # download.
+    param([string]$OS, [string]$Arch)
+    return ("$OS-$Arch" -in $Script:ShippedPlatforms)
 }
 
 # ---------- Self-test -------------------------------------------------------
@@ -127,9 +130,12 @@ function Invoke-SelfTest {
         $fails += "Get-DetectedArch returned unexpected value: $arch"
     }
 
-    if ((Test-PlatformBinariesAvailable -OS 'windows') -ne $false) { $fails += 'Test-PlatformBinariesAvailable should return $false for windows' }
-    if ((Test-PlatformBinariesAvailable -OS 'linux')   -ne $true)  { $fails += 'Test-PlatformBinariesAvailable should return $true for linux' }
-    if ((Test-PlatformBinariesAvailable -OS 'macos')   -ne $true)  { $fails += 'Test-PlatformBinariesAvailable should return $true for macos' }
+    foreach ($shipped in @(@('windows', 'x86_64'), @('linux', 'x86_64'), @('linux', 'aarch64'), @('macos', 'aarch64'))) {
+        if ((Test-PlatformBinariesAvailable -OS $shipped[0] -Arch $shipped[1]) -ne $true) { $fails += "Test-PlatformBinariesAvailable should return `$true for $($shipped -join '-')" }
+    }
+    foreach ($missing in @(@('windows', 'aarch64'), @('macos', 'x86_64'))) {
+        if ((Test-PlatformBinariesAvailable -OS $missing[0] -Arch $missing[1]) -ne $false) { $fails += "Test-PlatformBinariesAvailable should return `$false for $($missing -join '-')" }
+    }
 
     if ($fails.Count -eq 0) {
         Write-Host 'install.ps1 self-test: PASS'
@@ -187,21 +193,21 @@ function Invoke-Install {
     $arch = Get-DetectedArch
     if ($os -eq 'unknown' -or $arch -eq 'unknown') {
         Write-Error "Unsupported platform: os=$os arch=$arch"
-        Write-Error 'Supported: windows-x86_64, windows-aarch64, linux-x86_64, linux-aarch64, macos-x86_64, macos-aarch64'
+        Write-Error "Supported: $($Script:ShippedPlatforms -join ', ')"
         return 1
     }
 
-    if (-not (Test-PlatformBinariesAvailable -OS $os)) {
+    if (-not (Test-PlatformBinariesAvailable -OS $os -Arch $arch)) {
         Write-Host ''
-        Write-Host 'EdgeFirst Profiler CLI does not yet ship Windows binaries.' -ForegroundColor Yellow
+        Write-Host "EdgeFirst Profiler CLI does not ship binaries for $os-$arch." -ForegroundColor Yellow
         Write-Host ''
-        Write-Host 'Windows support is planned. Track status at:'
-        Write-Host '  https://github.com/EdgeFirstAI/profiler-cli'
+        Write-Host 'Supported platforms:'
+        Write-Host '  - Linux x86_64   (glibc 2.17+ / manylinux2014)'
+        Write-Host '  - Linux aarch64  (glibc 2.17+ / manylinux2014)'
+        Write-Host '  - macOS arm64    (macOS 11+)'
+        Write-Host '  - Windows x86_64 (Windows 10 or 11)'
         Write-Host ''
-        Write-Host 'Supported platforms today:'
-        Write-Host '  - Linux x86_64  (glibc 2.17+ / manylinux2014)'
-        Write-Host '  - Linux aarch64 (glibc 2.17+ / manylinux2014)'
-        Write-Host '  - macOS arm64   (macOS 11+)'
+        Write-Host 'Track status at https://github.com/EdgeFirstAI/profiler-cli'
         Write-Host ''
         return 2
     }
@@ -278,7 +284,14 @@ function Invoke-Install {
 
         $dest = Join-Path $resolvedPrefix $binName
         try {
-            Copy-Item -Path $binSrc -Destination $dest -Force
+            if ($os -eq 'windows') {
+                # The bundled ONNX Runtime, DirectML and ANGLE DLLs (and their
+                # license texts) must sit beside the executable.
+                Get-ChildItem -Path (Split-Path -Parent $binSrc) -File |
+                    Copy-Item -Destination $resolvedPrefix -Force
+            } else {
+                Copy-Item -Path $binSrc -Destination $dest -Force
+            }
         } catch {
             Write-Error "Install directory is not writable: $resolvedPrefix"
             Write-Error 'Try a writable -Prefix DIR, or re-run from an elevated (Administrator) PowerShell.'
@@ -294,6 +307,20 @@ function Invoke-Install {
             Write-Host "Note: $resolvedPrefix was added to your PATH but the current shell will not see it until you open a new terminal."
         }
 
+        if ($os -eq 'windows') {
+            # The profiler and ONNX Runtime link the Visual C++ 2015-2022
+            # runtime, which a fresh Windows install may not have.
+            $missingCrt = @('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll') |
+                Where-Object { -not (Test-Path (Join-Path $env:SystemRoot "System32\$_")) }
+            if ($missingCrt) {
+                Write-Host ''
+                Write-Host "The Microsoft Visual C++ Redistributable is missing ($($missingCrt -join ', '))." -ForegroundColor Yellow
+                Write-Host 'Install it, then run edgefirst-profiler --version:'
+                Write-Host '  https://aka.ms/vs/17/release/vc_redist.x64.exe'
+                return 1
+            }
+        }
+
         Write-Host ''
         Write-Host 'Verifying install...'
         $versionOutput = & $dest --version 2>&1
@@ -307,6 +334,16 @@ function Invoke-Install {
             Write-Error "Version mismatch: --version output does not contain '$resolvedVersion'"
             Write-Error 'This could indicate a corrupt download or a wrong asset.'
             return 1
+        }
+
+        if ($os -eq 'windows') {
+            Write-Host ''
+            Write-Host 'ONNX Runtime is installed for --provider cpu and --provider directml.'
+            if (Test-Path (Join-Path $env:SystemRoot 'System32\nvcuda.dll')) {
+                Write-Host 'An NVIDIA driver is present. --provider cuda needs the CUDA 12 and cuDNN 9'
+                Write-Host 'runtime and the CUDA build of ONNX Runtime, which this installer does not install:'
+                Write-Host '  https://github.com/EdgeFirstAI/profiler-cli#cuda-on-windows'
+            }
         }
         return 0
     } finally {
