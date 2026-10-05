@@ -4,6 +4,31 @@ All notable changes to the **EdgeFirst Profiler CLI** are documented in this fil
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.18.0] - 2026-10-04
+
+### Added
+
+- **Tile-trained models run with SAHI automatically.** A model whose metadata declares tiled deployment (`tiling.mode: tiled`) is validated on its tile grid without `--sahi`, and the run's setup log says so. `--sahi`, or the TUI `Tiling` toggle (now shown as `auto (on for tiled models)` when off), still enables SAHI for any other detection model.
+- **Validations published to Studio now record the platform they ran on.** Alongside the uploaded `platform.yaml`, the profiler sends the capture host, processor, accelerator, runtime route and run settings to Studio as a structured platform record, so validations can be identified and compared by platform. Studio servers that do not yet accept this record log a warning, and the validation still publishes.
+- **Qualcomm QNN models run on Linux, including the Dragonwing IQ-9075.** `--provider qnn-htp` loads `.qnn.onnx` models through the `onnxruntime-qnn` plugin installed in the same Python environment as ONNX Runtime. QNN support is built with the `linux` feature set (or the `qnn` feature alone) and requires ONNX Runtime 1.22 or newer; the default build does not include it.
+- **Zero-copy GPU-to-NPU preprocessing on Qualcomm.** For 8-bit image models the Adreno GPU letterboxes each frame straight into NPU memory and the outputs are decoded in place, with no copies between stages; yolov8n reaches 618–630 FPS end to end on the IQ-9075. Set `EDGEFIRST_QNN_SHARED_MEMORY=0` to turn it off for comparison.
+- **The Dragonwing IQ-9075 and IQ-9100 are recognised as host platforms.**
+
+### Changed
+
+- **SDK: `ValidateConfig`'s `conf_threshold`, `iou_threshold`, `pre_nms_top_k` and `sahi_overlap` are now `Option`s.** `None` means the run resolves the value from model metadata or the defaults; `iou_threshold_override` and `sahi_overlap_override` are removed. `RunReport` still carries the resolved thresholds.
+
+### Fixed
+
+- **Validation of models larger than 640x640 no longer drops candidates before NMS.** Validation runs pass up to 30 000 candidates to NMS, as Ultralytics `val` does, instead of 8400 (the anchor count of a 640x640 model), so mAP for inputs such as 1344x768 or 1920x1088 and for multi-class candidates matches Ultralytics. An explicit `--pre-nms-top-k` always applies, including `8400`, and throughput runs are unchanged.
+- **SAHI runs of tile-trained Ultralytics models use the model's own tiling settings.** The tile overlap, per-tile score threshold and per-tile NMS IoU come from the model's `tiling` metadata when it has no `validation` block, so the profiler scores these models with the settings their trainer validated with (for example a per-tile score of 0.001 instead of 0.05).
+- **An explicit `--conf-threshold` now applies under SAHI even when it equals the 0.001 default.** It was previously treated as unset and replaced by the model's per-tile score.
+- **SAHI settings and tiled-model detection read the sidecar `edgefirst.json`.** A `tiling` or `validation` block that lives only in the sidecar file now turns on SAHI and sets its values, as an embedded one does.
+- **Runs with ONNX Runtime 1.30 no longer crash intermittently at exit.** ONNX Runtime's telemetry, which could crash in a background thread as the run ended, is now disabled.
+- **The Studio launch form lists only artifacts a cloud run can execute.** Edge-only formats such as `.hef` and `.engine`, which the dispatcher rejected at launch, no longer appear in the artifact dropdown.
+
 ## [1.17.2] - 2026-09-24
 
 ### Security
