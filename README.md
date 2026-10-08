@@ -100,12 +100,12 @@ The profiler and ONNX Runtime need the [Microsoft Visual C++ Redistributable](ht
 |---|---|---|
 | NVIDIA driver | R570 or newer | [NVIDIA drivers](https://www.nvidia.com/en-us/drivers/) |
 | CUDA runtime | CUDA 12.8 or newer 12.x | [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads?target_os=Windows&target_arch=x86_64), or the runtime-only [redistributable archives](https://developer.download.nvidia.com/compute/cuda/redist/) |
-| cuDNN | 9.x for CUDA 12 | [cuDNN](https://developer.nvidia.com/cudnn-downloads?target_os=Windows&target_arch=x86_64), or the [redistributable archives](https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/windows-x86_64/) |
+| cuDNN | 9.24 or newer for CUDA 12 | [cuDNN](https://developer.nvidia.com/cudnn-downloads?target_os=Windows&target_arch=x86_64), or the [redistributable archives](https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/windows-x86_64/) |
 | ONNX Runtime (CUDA build) | 1.22.0 | [`onnxruntime-win-x64-gpu-1.22.0.zip`](https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-win-x64-gpu-1.22.0.zip) |
 
 1. Install the NVIDIA driver.
 2. Install the CUDA Toolkit; only the CUDA Runtime, cuBLAS and cuFFT components are needed. The installer adds `%CUDA_PATH%\bin` to `PATH`. From the redistributable archives instead, take `bin\*.dll` from `cuda_cudart`, `libcublas` and `libcufft` and put them in a folder on `PATH`.
-3. Install cuDNN 9 for CUDA 12 and add its `bin` folder to `PATH` (the cuDNN installer does not), for example `C:\Program Files\NVIDIA\CUDNN\v9.x\bin\12.x`.
+3. Install cuDNN 9.24 or newer for CUDA 12 (earlier 9.x releases compute some YOLO11 and YOLO26 convolutions incorrectly; the profiler warns and works around them, at some speed cost) and add its `bin` folder to `PATH` (the cuDNN installer does not), for example `C:\Program Files\NVIDIA\CUDNN\v9.x\bin\12.x`.
 4. Stage the CUDA build of ONNX Runtime where the profiler looks for it:
 
    ```powershell
