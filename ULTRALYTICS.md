@@ -14,10 +14,10 @@ Install the export backends with Ultralytics rather than letting it fetch them m
 
 ```bash
 # ONNX export
-pip install "ultralytics>=8.4.83" "onnx>=1.12.0,<2.0.0" "onnxslim>=0.1.82" onnxruntime
+pip install "ultralytics>=8.4.142" "onnx>=1.12.0,<2.0.0" "onnxslim>=0.1.82" onnxruntime
 
 # LiteRT export, needs Python 3.10+ (ai-edge-quantizer is only for quantize=8)
-pip install "ultralytics>=8.4.83" "litert-torch>=0.9.0" "ai-edge-litert>=2.1.4" "ai-edge-quantizer>=0.6.0"
+pip install "ultralytics>=8.4.142" "litert-torch>=0.9.0" "ai-edge-litert>=2.1.4" "ai-edge-quantizer>=0.6.0"
 ```
 
 ```bash
@@ -33,26 +33,27 @@ yolo export model=yolo11n.pt format=litert imgsz=640 quantize=8 data=coco8.yaml
 
 `format=onnx` writes `yolo11n.onnx` beside the checkpoint. `format=litert` writes `yolo11n.tflite`, and adding `quantize=8 data=coco8.yaml` writes `yolo11n_int8.tflite` instead, where `data=` supplies the calibration images. Both still carry the `.tflite` extension, which is what the profiler dispatches on. Any detection or segmentation checkpoint works the same way: `yolov8n.pt`, `yolo11n-seg.pt`, `yolo26n.pt`.
 
-Ultralytics 8.4.83 renamed this format, which is why the install pins that version: `format=tflite` and `int8=True` still work on it but print a deprecation warning and are rewritten to `format=litert` and `quantize=8`. On an older install the new spellings are simply rejected, and an unpinned `pip install ultralytics` leaves an existing older version alone.
+Ultralytics 8.4.83 renamed this format: `format=tflite` and `int8=True` still work but print a deprecation warning and are rewritten to `format=litert` and `quantize=8`. On an older install the new spellings are simply rejected. The install pins 8.4.142, which also changed how YOLO26's head is chosen (below), and an unpinned `pip install ultralytics` leaves an existing older version alone.
 
 **LiteRT export needs macOS or x86-64 Linux, on Python 3.10 or newer.** Ultralytics asserts the host before it starts, so the export step cannot run on an ARM64 Linux board, and `litert-torch` requires 3.10 where Ultralytics itself still allows 3.8. Export on a workstation and copy the `.tflite` across; the profiler consumes it on any target. ONNX export has neither restriction.
 
-**Running a `.tflite` needs the TensorFlow Lite C++ runtime on the target.** The profiler loads `libtensorflow-lite.so` at run time rather than bundling it, so a standalone binary reports a load error until you set `TFLITE_LIBRARY_PATH` or put the library on the search path. This is the native library, not the Python `tflite` or `tflite_runtime` package. The container images ship it already. ONNX needs nothing extra, which is why the rest of this tutorial uses it.
+**Running a `.tflite` needs the TensorFlow Lite C++ runtime on the target.** The profiler loads `libtensorflow-lite.so` at run time rather than bundling it, so a standalone binary reports a load error until you set `TFLITE_LIBRARY_PATH` or put the library on the search path. This is the native library, not the Python `tflite` or `tflite_runtime` package. The `tflite`, `imx95` and `imx8mp` container images ship it already; the default `onnx` image does not. ONNX needs nothing extra, which is why the rest of this tutorial uses it.
 
 CoreML is deliberately missing from that list. See [section 6](#6-apple-silicon-native-coreml) for what to run instead.
 
-**YOLO26 is not automatically NMS-free.** The architecture supports an end-to-end head, but whether a given checkpoint exports that way lives in its `end2end` flag, and a stock `yolo26n.pt` reports `end2end=False`: an ordinary `Detect` head with the YOLOv8 output shape `[1, 84, 8400]`, needing NMS like anything else. Check rather than assume:
+**YOLO26's NMS-free head is an export choice.** A YOLO26 checkpoint carries both heads, and the export's `nms` argument picks which one goes into the graph. Left unset, the export takes the ordinary one-to-many head with the YOLOv8 output shape `[1, 84, 8400]`, which needs NMS like anything else. `nms=False` takes the end-to-end head instead, which emits up to 300 final detections as `[1, 300, 6]`:
 
 ```bash
-python -c "from ultralytics import YOLO; \
-h = YOLO('yolo26n.pt').model.model[-1]; \
-print(type(h).__name__, h.end2end)"
-# Detect False        (stock yolo26n.pt, ultralytics 8.4.152)
+# Ordinary head: output [1, 84, 8400], metadata end2end=False
+yolo export model=yolo26n.pt format=onnx imgsz=640
+
+# End-to-end (NMS-free) head: output [1, 300, 6], metadata end2end=True
+yolo export model=yolo26n.pt format=onnx imgsz=640 nms=False
 ```
 
-`Detect False` is an ordinary head, `True` an end-to-end one. The flag travels with the checkpoint, so a model you trained or exported yourself may differ. Read the output.
+`nms=True` is a third option that embeds NMS in the exported graph; it isn't the end-to-end head. Before Ultralytics 8.4.142 the head came from the checkpoint's own `end2end` flag rather than from `nms`, so on an older install the commands above behave differently, which is one reason for the version pin. An int8 LiteRT export always gets the ordinary head: Ultralytics turns the end-to-end branch off for it.
 
-Both kinds validate correctly without intervention, and both emit the same `model_decode` and `postprocess` spans. An `end2end=True` export skips the NMS step but still reads output tensors and produces boxes, so what changes is time inside `model_decode`, not a stage that disappears.
+The exported model records which head it carries in its `end2end` metadata, and the profiler reads that (along with the output shape) when it auto-configures. Both kinds validate correctly without intervention, and both emit the same `model_decode` and `postprocess` spans. An `end2end=True` export skips the NMS step but still reads output tensors and produces boxes, so what changes is time inside `model_decode`, not a stage that disappears.
 
 **Don't assume NMS-free is faster.** The end-to-end head isn't the same graph with a step removed. Selection moves *into* the graph as a fixed top-k over every anchor, so inference itself changes, and whether the resulting graph is quicker or slower is a property of the backend compiling it. Neither direction is safe to assume.
 
@@ -105,7 +106,7 @@ On startup the console prints how the decoder was configured:
 Auto-configured: Ultralytics YOLOv8/11 detect, 80 classes
 ```
 
-That means auto-discovery matched the model's raw output tensors and Ultralytics export metadata against a known family, with no `edgefirst.json` needed. A segmentation export prints `Ultralytics YOLOv8/11 segment, 80 classes`. A YOLO26 model exported `end2end=True` prints `Ultralytics YOLO26 detect`, while one exported `end2end=False` carries the YOLOv8 output shape and is reported, correctly, as `Ultralytics YOLOv8/11 detect`.
+That means auto-discovery matched the model's raw output tensors and Ultralytics export metadata against a known family, with no `edgefirst.json` needed. A segmentation export prints `Ultralytics YOLOv8/11 segment, 80 classes`. A YOLO26 model exported with `nms=False` (end-to-end head, `end2end=True` in its metadata) prints `Ultralytics YOLO26 detect`, while the default export carries the YOLOv8 output shape and is reported, correctly, as `Ultralytics YOLOv8/11 detect`.
 
 **Overriding auto-discovery.** Drop an `edgefirst.json` (and optionally a `labels.txt`) beside the model file. Useful for a custom head, a renamed class set, or a model auto-discovery doesn't recognize. [Model Metadata](README.md#model-metadata) has the full precedence order, where embedded metadata beats the sidecar and the sidecar beats auto-discovery, plus how to obtain the schema. A sidecar that fails to parse is an error rather than a silent fallback, so fix it or remove it.
 
@@ -127,8 +128,7 @@ edgefirst-profiler validate \
     -o replay/
 ```
 
-> [!WARNING]
-> `-o` must name a different directory from the one holding the trace. It defaults to `./results`, and every run opens `<output>/trace.pftrace` for writing before it reads anything. Replaying out of `results/` with the default truncates the input trace, then reports metrics with the `system` and `timing.concurrency` sections missing and exits 0.
+`-o` must name a different directory from the one holding the predictions and trace. It defaults to `./results`, and a replay writes `metrics.yaml` and `profiler.log` there, so the profiler refuses to start rather than replace the original run's files. A replay writes no `trace.pftrace` of its own, since it runs no pipeline.
 
 A replay recomputes the accuracy and deployment sections from the predictions, and recovers the per-stage timing and system telemetry from the trace. It deliberately leaves out `timing.runtime`, which describes the live run's own wall clock and would be meaningless re-inflated, so the replayed document is not byte-identical to the original. That makes it cheap to re-check a threshold sweep or a decoder change without re-running inference.
 
@@ -191,14 +191,14 @@ Use [`tools/export_fp16.py`](tools/export_fp16.py), which ships beside this tuto
 
 **Needs macOS 13 or newer.** Float16 `MLMultiArray` inputs and outputs require a deployment target of iOS 16 / macOS 13, which the script sets. On anything older the conversion itself succeeds but the load-back check fails, and since nothing is published until both halves verify, the run exits with that error and leaves no artifacts at all.
 
-**Ordinary detection heads only.** The script refuses a segmentation checkpoint, because the converter declares a single `output0` and writes `task: detect`, which would silently drop a segmentation model's second (proto) output. It also refuses an `end2end=True` checkpoint, whose two halves can't be made to match: the CoreML side traces the end-to-end head while Ultralytics' ONNX exporter produces the ordinary-head shape unless told otherwise, and the end-to-end head's `TopK` can't be converted to fp16. Both are refused before either artifact is written, rather than producing a pair that loads, scores, and benchmarks misleadingly.
+**Ordinary detection heads only.** The script refuses a segmentation checkpoint, because the converter declares a single `output0` and writes `task: detect`, which would silently drop a segmentation model's second (proto) output. It also refuses a checkpoint whose head is set to end-to-end (`end2end=True` on the loaded model), whose two halves can't be made to match: the CoreML side traces whatever head the checkpoint is set to, while Ultralytics' ONNX exporter takes the ordinary head unless exported with `nms=False`, and the end-to-end head's `TopK` can't be converted to fp16. Both are refused before either artifact is written, rather than producing a pair that loads, scores, and benchmarks misleadingly.
 
 ```bash
 # onnxslim is required: the ONNX half exports with simplify=True, and
 # Ultralytics would otherwise try to fetch it mid-export. The numpy cap
 # matches the one Ultralytics applies to its own CoreML export; this
 # script calls coremltools directly, so nothing else enforces it.
-pip install "numpy<=2.3.5" "ultralytics>=8.4.83" coremltools onnx onnxconverter-common onnxruntime onnxslim
+pip install "numpy<=2.3.5" "ultralytics>=8.4.142" coremltools onnx onnxconverter-common onnxruntime onnxslim
 
 # Writes into the current directory. --outdir puts them elsewhere, in
 # which case prefix the -m paths below to match.

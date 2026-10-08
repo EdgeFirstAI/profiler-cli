@@ -111,8 +111,9 @@ def export_coreml_fp16(weights: Path, imgsz: int, out: Path) -> Path:
         )
 
     # An end-to-end head cannot be made into a matched pair here. The trace
-    # below follows whatever head the checkpoint carries, while Ultralytics'
-    # ONNX exporter defaults to the ordinary-head shape, so the two arms would
+    # below follows whatever head the checkpoint is set to, while Ultralytics'
+    # ONNX exporter picks its head from the export `nms` argument and takes the
+    # ordinary head by default, so the two arms would
     # describe different graphs -- and the end-to-end head's `TopK` is on
     # `onnxconverter-common`'s block list, so the ONNX arm would leave fp32
     # islands and trip the Cast guard once the CoreML half had already been

@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-10-08
+
+### Changed
+
+- **GPU (OpenGL) preprocessing now resizes NV12 and NV16 camera frames with bilinear filtering and crops at their true edges.** Earlier releases resized these frames nearest-neighbour, which cost YOLOv8n about 0.012 mAP50-95 on VisDrone, and shifted every crop half a pixel inward. The fix comes from HAL 0.34.1, which also brings filtered NV12 sampling to Mali GPUs such as the i.MX 95's.
+- **A successful run no longer floods the console.** ONNX Runtime's own session-setup messages, over a thousand lines per desktop run, are hidden unless you pass `-v` (or set `EFPI_ORT_LOG_LEVEL`). Expected facts about the host, such as running without real-time scheduling privileges or on a board without a power or temperature sensor, are recorded in `profiler.log` instead of printed as warnings.
+- **`report` shows the run's accuracy.** When the run's `metrics.yaml` is beside the trace, `edgefirst-profiler report` adds its detection, segmentation and deployment results, in the console report and in `--json`/`--yaml` output. A new run removes any `metrics.yaml` an earlier run left in its output directory, so a profiling-only run's trace is never reported with another run's accuracy.
+- **The Ultralytics tutorial now describes how YOLO26's head is chosen.** The NMS-free head comes from exporting with `nms=False`, not from the checkpoint, and the tutorial gives the export command for each head. Its install commands now need Ultralytics 8.4.142 or newer, the release that introduced this behaviour.
+- **The `--training-session`, `--session-id` and `--no-publish` help and the README now say when a run publishes to Studio.** Runs on a Studio session publish by default, `--no-publish` keeps them local, and a training-session run in a project you can only read validates locally.
+
+### Fixed
+
+- **YOLO11 and YOLO26 FP16 models on the ONNX Runtime CUDA EP no longer lose accuracy on cuDNN older than 9.24.** Those cuDNN releases compute some depthwise convolutions incorrectly, costing up to about 0.1 mAP50-95. The profiler now warns and uses the NHWC convolution path, which avoids the bug. Upgrade with `pip install -U 'nvidia-cudnn-cu12>=9.24'`; see [ONNX.md](ONNX.md#cudnn-924-or-newer).
+- **Re-validating a run no longer destroys that run's trace.** Re-scoring with `--predictions` and `--trace` into the directory that holds those files, which is the default `./results` for a run that used the default, used to wipe the trace, `metrics.yaml` and `profiler.log` and still report success. The profiler now refuses with an error asking for a different `-o` directory. A re-score also no longer writes an empty `trace.pftrace` of its own.
+- **`report` on a trace now matches the summary the live run printed.** Capture time no longer includes time spent waiting for the next stage, and inference timing and worker concurrency now reflect every inference slot in flight rather than the single dispatch thread. Re-validating with `--trace` gets the same corrected concurrency and throughput figures. Traces recorded by earlier versions still report the old inference concurrency, and `report` says so.
+- **No more spurious "Failed to stream ORT profile" warning** on ONNX runs without `--layer-profile`, and no empty `ORT profile:` line.
+- **The TensorFlow Lite load error names the container images that include the runtime** (`tflite`, `imx95` and `imx8mp`), rather than implying every image does.
+- **The README no longer says an offline validation writes charts.** Charts are produced only for runs that publish to a Studio session; the README now lists the files an offline run writes.
+- **TensorRT validation with `EDGEFIRST_TRT_CUDA_ZEROCOPY=1` no longer fails at startup with "TrtPboRing: slot 4 out of range".** The opt-in GPU zero-copy input path now runs at any `--inference-depth`, with or without zero-copy outputs. On Jetson the default CPU staging path remains faster.
+
 ## [1.18.0] - 2026-10-04
 
 ### Added
