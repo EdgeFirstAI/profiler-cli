@@ -92,7 +92,7 @@ The profiler and ONNX Runtime need the [Microsoft Visual C++ Redistributable](ht
 
 `--provider cuda` needs an NVIDIA GPU of compute capability 7.0 (Volta) or newer, a current NVIDIA driver, the CUDA 12 and cuDNN 9 runtime libraries, and the CUDA build of ONNX Runtime. None of these are bundled, because together they are about 2 GB.
 
-**With Python**, `pip install "edgefirst-profiler[cuda]"` installs all of them (see [Install](#install)).
+**With Python**, `pip install "edgefirst-profiler[cuda]"` installs the CUDA and cuDNN runtime libraries and the CUDA build of ONNX Runtime (see [Install](#install)). The NVIDIA GPU and driver are still prerequisites: install the driver first.
 
 **Without Python** (PowerShell installer), set them up once:
 

@@ -37,8 +37,11 @@ $Script:Repo = 'EdgeFirstAI/profiler-cli'
 
 # ---------- Pure helpers ----------------------------------------------------
 
+# Windows PowerShell 5.1 has no $IsWindows/$IsLinux/$IsMacOS, and strict mode
+# rejects reading an undefined variable, so Windows is detected from $env:OS.
+# The $Is* variables are read only off Windows, where PowerShell 6+ defines them.
 function Get-DetectedOS {
-    if ($IsWindows -or $env:OS -eq 'Windows_NT') { return 'windows' }
+    if ($env:OS -eq 'Windows_NT') { return 'windows' }
     if ($IsLinux)   { return 'linux' }
     if ($IsMacOS)   { return 'macos' }
     return 'unknown'
@@ -74,7 +77,7 @@ function Get-AssetName {
 }
 
 function Test-IsElevated {
-    if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+    if ($env:OS -eq 'Windows_NT') {
         $current = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = New-Object Security.Principal.WindowsPrincipal($current)
         return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -255,11 +258,14 @@ function Invoke-Install {
         }
 
         Write-Host 'Extracting...'
+        # A directory of its own, so the downloaded archive and checksum are
+        # never mistaken for archive contents and installed.
+        $extracted = New-Item -ItemType Directory -Path (Join-Path $tmp 'extracted') | Select-Object -ExpandProperty FullName
         if ($archive.EndsWith('.zip')) {
-            Expand-Archive -Path $archive -DestinationPath $tmp -Force
+            Expand-Archive -Path $archive -DestinationPath $extracted -Force
         } else {
             # tar.gz on Windows: tar.exe ships with Windows 10 1803+
-            tar.exe -xzf $archive -C $tmp
+            tar.exe -xzf $archive -C $extracted
         }
 
         if (-not (Test-Path $resolvedPrefix)) {
@@ -273,9 +279,9 @@ function Invoke-Install {
         }
 
         $binName = if ($os -eq 'windows') { 'edgefirst-profiler.exe' } else { 'edgefirst-profiler' }
-        $binSrc = Join-Path $tmp $binName
+        $binSrc = Join-Path $extracted $binName
         if (-not (Test-Path $binSrc)) {
-            $binSrc = (Get-ChildItem -Path $tmp -Recurse -Filter $binName -File | Select-Object -First 1).FullName
+            $binSrc = (Get-ChildItem -Path $extracted -Recurse -Filter $binName -File | Select-Object -First 1).FullName
         }
         if (-not $binSrc -or -not (Test-Path $binSrc)) {
             Write-Error "$binName not found in archive"
