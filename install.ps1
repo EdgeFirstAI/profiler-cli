@@ -314,10 +314,19 @@ function Invoke-Install {
         }
 
         if ($os -eq 'windows') {
+            # The native (x64) system directory. A 32-bit PowerShell on x64
+            # Windows sees SysWOW64's x86 DLLs through System32, and only
+            # Sysnative reaches the x64 ones the installed profiler loads.
+            $systemDir = if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+                Join-Path $env:SystemRoot 'Sysnative'
+            } else {
+                Join-Path $env:SystemRoot 'System32'
+            }
+
             # The profiler and ONNX Runtime link the Visual C++ 2015-2022
             # runtime, which a fresh Windows install may not have.
             $missingCrt = @('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll') |
-                Where-Object { -not (Test-Path (Join-Path $env:SystemRoot "System32\$_")) }
+                Where-Object { -not (Test-Path (Join-Path $systemDir $_)) }
             if ($missingCrt) {
                 Write-Host ''
                 Write-Host "The Microsoft Visual C++ Redistributable is missing ($($missingCrt -join ', '))." -ForegroundColor Yellow
@@ -345,7 +354,7 @@ function Invoke-Install {
         if ($os -eq 'windows') {
             Write-Host ''
             Write-Host 'ONNX Runtime is installed for --provider cpu and --provider directml.'
-            if (Test-Path (Join-Path $env:SystemRoot 'System32\nvcuda.dll')) {
+            if (Test-Path (Join-Path $systemDir 'nvcuda.dll')) {
                 Write-Host 'An NVIDIA driver is present. --provider cuda needs the CUDA 12 and cuDNN 9'
                 Write-Host 'runtime and the CUDA build of ONNX Runtime, which this installer does not install:'
                 Write-Host '  https://github.com/EdgeFirstAI/profiler-cli#cuda-on-windows'
