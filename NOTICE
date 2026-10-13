@@ -32,3 +32,23 @@ those libraries and their licenses is reported by the binary itself:
 
 A machine-readable copy may also be attached to each release as
 NOTICE.binary alongside the platform archives.
+
+Third-Party Components — Windows Runtime Libraries
+==================================================
+
+The Windows release archive and wheel ship these unmodified libraries
+beside the binary, each with its license text:
+
+    ONNX Runtime 1.22.0, DirectML build (onnxruntime.dll,
+    onnxruntime_providers_shared.dll)
+        Copyright (c) Microsoft Corporation. MIT License.
+        onnxruntime-LICENSE.txt, onnxruntime-ThirdPartyNotices.txt
+
+    DirectML 1.15.4 (DirectML.dll)
+        Copyright (c) Microsoft Corporation. Microsoft Software
+        License Terms for DirectML.
+        DirectML-LICENSE.txt, DirectML-ThirdPartyNotices.txt
+
+    ANGLE (libEGL.dll, libGLESv2.dll), built by EdgeFirstAI/angle-package
+        Copyright The ANGLE Project Authors. BSD 3-Clause License.
+        ANGLE-LICENSE.txt

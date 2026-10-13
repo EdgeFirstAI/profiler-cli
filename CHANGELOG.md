@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-10-12
+
+### Added
+
+- **The profiler CLI and TUI now run on Windows 10 and 11 (x86_64).** ONNX models can be profiled on the CPU, on any Direct3D 12 GPU with the new `--provider directml`, and on NVIDIA GPUs with `--provider cuda`. A `pip install edgefirst-profiler` wheel and a `windows-x86_64.zip` archive are published for each release, and the PowerShell installer now installs on Windows.
+- **The Windows wheel and archive bundle ONNX Runtime 1.22 with DirectML, and ANGLE**, so `--provider cpu`, `--provider directml` and GPU preprocessing work straight after installing. The copy of ONNX Runtime that ships inside Windows is never used, because it has no GPU providers.
+- **`pip install "edgefirst-profiler[cuda]"` installs everything `--provider cuda` needs on Linux x86_64 and Windows x86_64**: the CUDA build of ONNX Runtime and NVIDIA's CUDA 12 and cuDNN 9 runtime wheels. Without Python, the profiler-cli README lists the supported CUDA, cuDNN and driver versions and where to download them.
+- **DirectML runs record the GPU they actually ran on.** The platform record names the adapter's vendor, with new `amd-gpu` and `intel-gpu` accelerator ids alongside `nvidia-gpu`.
+- **Requesting `--provider cuda` or `--provider directml` on Windows now fails with an actionable message when the provider's runtime files are missing**, instead of silently running on the CPU.
+- **Windows runs record CPU, memory and process telemetry, and on NVIDIA GPUs the GPU temperature and power**, in the dashboard and the trace.
+- **GPU preprocessing on Windows uses the HAL's Direct3D 11 path through the bundled ANGLE.**
+
+### Changed
+
+- **Validating segmentation models is many times faster, and detection models are faster too.** Scoring now uses every CPU core and only processes the part of the image each mask covers. On an i.MX 8M Plus, scoring a full COCO validation run of a YOLOv8n segmentation model dropped from about 69 minutes to under 2 minutes, and the whole run now peaks at about 0.9 GB of memory. Validation scores are unchanged.
+- **The CLI and TUI show a progress bar while validation scores predictions,** with images done, rate and time remaining, so the step no longer looks stalled before the Studio uploads start. Runs on a Studio session report the same progress to Studio.
+- **Instance masks in `predictions.parquet` now cover only the object's area,** with their position on the image stored in the mask PNG, which makes segmentation prediction files about 20% smaller. This follows a clarification of the EdgeFirst Dataset Format 2026.10. Reading these files with other tools needs EdgeFirst Client 2.17.0 or later; prediction files from earlier releases still validate as before.
+- **A pip-installed profiler finds ONNX Runtime and the NVIDIA CUDA wheels in its own Python environment even when that environment is not activated**, on Linux as well as Windows. Before, only an activated venv (`VIRTUAL_ENV`) was searched.
+
+### Fixed
+
+- **NXP Ara240 throughput is no longer understated for models built with a recent converter.** For DVMs whose embedded metadata lists the model's layers (converter 2.5.0 or later), the profiler split every frame's NPU compute time into one trace slice per layer, which slowed the run by about 20% (yolo11n: about 185 instead of 235 FPS) and made the trace about 16 times larger. The per-layer breakdown now appears only with `--layer-profile`. Throughput measured for these models with earlier releases, including Studio validation sessions, was understated by the same amount; accuracy was not affected.
+- **Tiled (SAHI) validation no longer hangs at the end of a run on the Raspberry Pi 5 with Hailo-8L.** About half of these runs stopped making progress on their last image and never finished. Other zero-copy backends could hit the same hang, more rarely. On the Hailo-8L, VisDrone tiled models now complete every run with unchanged accuracy and throughput.
+- **Validating dense segmentation models no longer runs out of memory on boards with limited RAM.** Models that report many detections per image, such as the `smart` TFLite segmentation exports, were killed on 2 GB i.MX 8M Plus boards when validation started. Peak memory during validation is now roughly halved, and validation scores are unchanged.
+- **Segmentation masks from QNN models with uint8 or uint16 prototype outputs are no longer noise.** Models converted with the logical quantization split for the Qualcomm IQ-9075 lost most of their mask accuracy: yolov8n-seg scored 11.2 mask mAP50-95 at w8a16 instead of 29.3. The fix comes from HAL 0.35. Models with int8 or float prototypes, including every TFLite model, are unaffected.
+
 ## [1.18.1] - 2026-10-08
 
 ### Changed
