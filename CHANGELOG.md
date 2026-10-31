@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.20.1] - 2026-10-30
+
+### Changed
+
+- **TFLite on the i.MX 95 Neutron NPU runs one inference slot by default**, like the i.MX 8M Plus VxDelegate already did: the lowest latency and memory, and safe with every delegate build. Pass `--inference-depth 2` or more for higher throughput (about 80 FPS against 55 for yolov8n).
+- **The Jetson Orin Nano preprocesses on the CPU by default**, as it did before 1.20.0, which restores its throughput (233 against 140 FPS on average across 12 models). The run summary says which backend was chosen; `EDGEFIRST_FORCE_BACKEND` still overrides it.
+
+### Fixed
+
+- **i.MX 95 Neutron keeps full zero-copy input at every inference depth.** Each inference slot now receives its frame straight from the GPU preprocess into its own NPU input buffer, as the i.MX 8M Plus VxDelegate slots already did. In 1.20.0 every slot above depth 1 copied its input through host memory. Needs a Neutron delegate that keeps its DMA-BUF state per instance (EdgeFirst `tflite-neutron-delegate` `dd81103` or later); with an older delegate, several slots copy their input through host memory.
+- **An i.MX 8M Plus VxDelegate that crashes with several instances no longer aborts a run with `--inference-depth` 2 or more.** The profiler rehearses two instances in a child process first, and stays at one slot with a warning if the delegate crashes.
+- **Every fall back from NPU zero-copy or from the requested depth is reported.** A delegate without per-instance DMA-BUF state, a delegate without the DMA-BUF API, a kernel driver without DMA-BUF export, or a VxDelegate that cannot run several instances now prints a warning naming the cause and the fix, and is listed under `pipeline.issues` in `metrics.yaml`. Previously these were logged below the default log level, or not at all.
+- **Neutron runs print their setup lines again**, including the `Preprocess:` line that says whether the input was zero-copy and the `Pipeline depth:` line. They were written into the delegate's profiling capture instead of the console.
+
 ## [1.20.0] - 2026-10-29
 
 ### Added
