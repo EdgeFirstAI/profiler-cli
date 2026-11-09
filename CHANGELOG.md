@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-11-09
+
+### Added
+
+- **The EdgeFirst TFLite delegate runs the CPU part of NPU models.** `--edgefirst-delegate` hands the operators the Neutron or VX delegate leaves on the CPU, such as YOLO26 attention and DFL decoding, to EdgeFirst HAL kernels instead of TFLite's. It is on by default with Neutron (i.MX 95) and VX (i.MX 8M Plus), and off elsewhere; `--edgefirst-delegate false` or `EDGEFIRST_DELEGATE=false` runs stock TFLite. Accuracy is unchanged. `platform.yaml` records where it ran under `observed.edgefirst_delegate`.
+- **`--tflite-threads` sets the TFLite interpreter threads for each inference slot.** `platform.yaml` records them under `resolved.thread_split`.
+
+### Changed
+
+- **TFLite on the Neutron and VX NPUs runs 2 inference slots × 2 threads by default**, up from 1 slot. With the EdgeFirst delegate, yolo26n on COCO rises from 30.8 to 69.2 FPS on the i.MX 95 and from 8.9 to 13.3 FPS on the i.MX 8M Plus. `--inference-depth 1` gives the old single slot at lower latency. [TUNING.md](TUNING.md) records the slots × threads sweep and how to repeat it.
+- **On the i.MX 8M Plus, update the VX delegate to run 2 slots with the EdgeFirst delegate.** VX delegates without the fix from EdgeFirstAI/tflite-vx-delegate-imx#4 can return wrong detections on about 0.3% of frames with no error. Use `--inference-depth 1` until the board has the fixed delegate; [start.edgefirst.ai/nxp](https://start.edgefirst.ai/nxp/) offers BSPs for many platforms with this and other fixes.
+- **Faster YOLO decoding, NMS and mask building on 64-bit Arm boards**, from EdgeFirst HAL 0.39, which runs these steps with NEON kernels. On an i.MX 95 with the Ara240, yolov8n postprocessing drops from 3.6 to 2.8 ms per frame and peak throughput rises from 230 to 248 FPS.
+- **The NXP Ara240 on the i.MX 95 runs two preprocessing workers by default**, with two inference slots as before. One worker could not keep up with the NPU and held every inference depth near 190 FPS; the default now reaches 199 FPS for yolov8n. The new `ARA2.md` shows how to go further: `--inference-depth 4` reaches 238 FPS, and `--preprocess-depth 3 --inference-depth 8` the NPU's ceiling of about 248 FPS, at the same accuracy.
+- **The `imx95` container image bundles the eIQ Neutron SDK 3.2.3 delegate and driver**, so it runs models compiled with SDK 3.2.3, the EdgeFirst Studio Neutron converter's default. Install the SDK 3.2.3 Neutron firmware on the host; [DOCKER.md](DOCKER.md#neutron-firmware--one-time-host-install) links it. Its host kernel needs the Neutron mailbox handshake from NXP BSP 6.18.37 (the EdgeFirst BSP has it); on BSP 6.18.20 and earlier the NPU reset hangs with this firmware.
+
+### Fixed
+
+- **The Ara240 backend now finds the proxy over TCP as well as a UNIX socket.** It connects to `ARA2_SOCKET` when set (`/path`, `unix:/path` or `tcp:IP:PORT`), then to `/var/run/proxy.sock`, then to any running proxy it can find, so it reaches an arart r3.0 proxy left on its default TCP 127.0.0.1:5000. Over TCP, tensors use host memory; DMA-BUF zero-copy needs the proxy on a UNIX socket (`interface_type: SOCKET`), as NXP's BSP images configure it.
+- **The Ara240 connection error no longer tells you to check `ara2.service`**, a unit name only some images use. It now points at the proxy service, the `interface_type` in its configuration, and `ARA2_SOCKET`.
+- **`.dvm` sessions report the Ara SDK detail (`Ara SDK (libaraclient)`) when the client library is outside `/usr/lib`.** The probe now looks for `libaraclient_<arch>.so`, `libaraclient.so` and `libaraclient.so.1` in `LD_LIBRARY_PATH` and the system library directories, as arart r3.0 installs `libaraclient_aarch64.so` under its own `lib/` directory.
+- **`platform.yaml` records the slots and threads of every run.** Model-only runs (`--model` without images) and runs started from the TUI now write `resolved.depth` and `resolved.thread_split`, taken from what the engine built.
+
 ## [1.20.1] - 2026-10-30
 
 ### Changed
